@@ -1,0 +1,73 @@
+dataset_id: chengdu_agri_greenhouse_001
+description: GH2024 (Xindu) as the primary target greenhouse for crop/harvest calibration. Derived from chengdu_agri_greenhouse_001.yml with the crop-observation target switched from GH63 (Pidu) to GH2024 (Xindu).
+location: Chengdu
+organization: Sichuan Chengdu Academy of Agricultural Sciences
+greenhouse_id: greenhouse_001
+greenhouse_type: multi_span_plastic
+
+raw_data:
+  root: data/raw/chengdu_agri/greenhouse_001/
+  weather_dir: data/raw/chengdu_agri/greenhouse_001/weather/
+  indoor_dir: data/raw/chengdu_agri/greenhouse_001/indoor/
+  control_dir: data/raw/chengdu_agri/greenhouse_001/control/
+  crop_dir: data/raw/chengdu_agri/greenhouse_001/crop/
+
+processed_data:
+  root: data/processed/chengdu_agri/greenhouse_001/
+  weather_dir: data/processed/chengdu_agri/greenhouse_001/weather/
+  trajectory_dir: data/processed/chengdu_agri/greenhouse_001/trajectories/
+  normalization_dir: data/processed/chengdu_agri/greenhouse_001/normalization/
+  crop_observation_dir: data/processed/chengdu_agri/greenhouse_001/crop_observations/
+  harvest_event_dir: data/processed/chengdu_agri/greenhouse_001/harvest_events/
+
+expected_streams:
+  weather:
+    schema: data/schemas/weather_schema.yml
+  indoor:
+    schema: data/schemas/indoor_schema.yml
+  control:
+    schema: data/schemas/control_schema.yml
+  trajectory:
+    schema: data/schemas/trajectory_schema.yml
+  crop_observation:
+    schema: data/schemas/crop_observation_schema.yml
+  harvest_event:
+    schema: data/schemas/harvest_event_schema.yml
+  harvest_driver:
+    schema: data/schemas/harvest_driver_schema.yml
+
+outputs:
+  results_root: results/chengdu_agri_greenhouse_001/
+  train_data_root: train_data/chengdu_agri_greenhouse_001/
+
+source:
+  greenhouse_id: 1
+  timezone: Asia/Shanghai
+  sql_path_env: CHENGDU_SQL_BACKUP
+  sensor_csv_glob: "**/*.csv"
+
+crop_observations:
+  sql_table_whitelist: [planting_info, plant_message_info]
+  target_greenhouse_ids: [1]
+  target_greenhouse_codes: [GH2024]
+  source_sites:
+    GH2024: chengdu_xindu_target_greenhouse
+    GH202602061448266452514: chengdu_pidu_source_greenhouse
+  canonical_observation_type: standing_crop_sample
+  harvest_event_type: harvest_event
+
+processing:
+  chunksize: 250000
+  interpolation_limit_minutes: 5
+  indoor_equipment_ids: [3038, 3044]
+  outdoor_equipment_ids: [3036]
+
+sensor_ranges:
+  AIR_TEMPERATURE: [-30.0, 60.0]
+  AIR_HUMIDITY: [0.0, 100.0]
+  CO2: [250.0, 5000.0]
+  WIND_SPEED: [0.0, 50.0]
+  PHOTO_ELECTRIC_RADIATION: [0.0, 2500.0]
+  ILLUMINATION: [0.0, 200000.0]
+  SOIL_TEMPERATURE: [-10.0, 60.0]
+  SOIL_HUMIDITY: [0.0, 100.0]

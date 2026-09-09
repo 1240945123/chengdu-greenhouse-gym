@@ -1,0 +1,17 @@
+schema_version: chengdu-physics-v4-daily-balance-selection
+train_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v3/train.csv
+validation_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v3/val.csv
+v3_params_json: results/chengdu_agri_greenhouse_001/physics_v3_identification/selected_params.json
+train_horizons: [24, 72]
+validation_horizons: [24, 72]
+train_stride: 336
+validation_stride: 6
+thermal_top_k: 3
+validation_top_k: 5
+thermal_grid:
+  longwave_scale: [0.0, 0.5, 1.0]
+  floor_capacity_scale: [0.5, 1.0, 2.0]
+  latent_heat_scale: [0.0, 0.5, 1.0]
+moisture_grid:
+  moisture_buffer_rate_s: [0.0, 0.0000462963, 0.0001388889]
+  moisture_buffer_capacity_ratio: [1.0, 4.0, 8.0]

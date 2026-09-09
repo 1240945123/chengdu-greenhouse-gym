@@ -1,0 +1,53 @@
+﻿GreenLightEnv:
+  temp_day_setpoint: 19.5
+  temp_night_setpoint: 16.5
+  temp_deadzone: 5.0
+  co2_day_setpoint: 800.0
+  rh_max: 85.0
+
+  heat_pid:
+    kp: 0.18
+    ki: 0.015
+    kd: 0.02
+    output_min: 0.0
+    output_max: 1.0
+    integral_min: -20.0
+    integral_max: 20.0
+
+  vent_temp_pid:
+    kp: 0.12
+    ki: 0.005
+    kd: 0.01
+    output_min: 0.0
+    output_max: 1.0
+    integral_min: -20.0
+    integral_max: 20.0
+
+  co2_pid:
+    kp: 0.002
+    ki: 0.0001
+    kd: 0.0
+    output_min: 0.0
+    output_max: 1.0
+    integral_min: -2000.0
+    integral_max: 2000.0
+
+  vent_rh_pid:
+    kp: 0.08
+    ki: 0.002
+    kd: 0.0
+    output_min: 0.0
+    output_max: 1.0
+    integral_min: -50.0
+    integral_max: 50.0
+
+  lamps_on: 0.0
+  lamps_off: 18.0
+  lamps_off_sun: 400.0
+  lamp_rad_sum_limit: 10.0
+  thscr_temp_threshold_day: 5.0
+  thscr_temp_threshold_night: 10.0
+  thscr_value: 0.8
+  use_bl_scr: 1.0
+
+

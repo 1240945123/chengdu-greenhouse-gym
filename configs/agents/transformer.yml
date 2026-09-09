@@ -1,0 +1,35 @@
+﻿GreenLightEnv:
+  seed: 42
+  source_counts:
+    random: 2
+    baseline: 2
+    pid: 2
+  max_steps_per_episode: 256
+  test_fraction: 0.2
+
+  model:
+    input_dim: 44
+    output_dim: 28
+    seq_len: 8
+    d_model: 128
+    nhead: 4
+    num_layers: 2
+    dim_feedforward: 256
+    dropout: 0.1
+    activation: gelu
+
+  training:
+    epochs: 20
+    batch_size: 128
+    learning_rate: 0.001
+    device: cpu
+
+  evaluation:
+    source_counts:
+      random: 1
+      baseline: 1
+      pid: 1
+    max_steps_per_episode: 128
+    multi_step_rollout_steps: 32
+
+

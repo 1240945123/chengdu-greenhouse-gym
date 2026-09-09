@@ -1,0 +1,65 @@
+dataset_id: chengdu_agri_greenhouse_001
+environment_id: ChengduControllerBenchmark
+location: Chengdu
+growth_year: 2025
+validation_growth_year: 2025
+available_weather_days: 366
+episode_days: 4
+controller_timeout_seconds: 30.0
+training_seasons:
+  - {name: 2023_spring, growth_year: 2023, start_day: 59, end_day_exclusive: 179}
+  - {name: 2023_autumn, growth_year: 2023, start_day: 226, end_day_exclusive: 346}
+  - {name: 2024_spring, growth_year: 2024, start_day: 60, end_day_exclusive: 180}
+  - {name: 2024_autumn, growth_year: 2024, start_day: 227, end_day_exclusive: 347}
+validation_start_day: 59
+test_start_day: 226
+calibration_path: results/chengdu_agri_greenhouse_001/physics_calibration/chengdu_physics_calibrated_params.json
+
+profiles:
+  smoke:
+    seeds: [0]
+    rl_total_timesteps: 4096
+    rl_n_envs: 1
+    evaluation_seeds: [0]
+  paper:
+    seeds: [0, 1, 2, 3, 4]
+    rl_total_timesteps: 2000000
+    rl_n_envs: 4
+    evaluation_seeds: [0, 1, 2, 3, 4]
+
+algorithms:
+  ppo:
+    learning_rate: 0.0003
+    n_steps: 512
+    batch_size: 128
+    n_epochs: 8
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    policy_kwargs:
+      net_arch: {pi: [256, 256], vf: [256, 256]}
+  sac:
+    learning_rate: 0.0007
+    buffer_size: 200000
+    learning_starts: 512
+    batch_size: 128
+    tau: 0.01
+    gamma: 0.99
+    train_freq: 16
+    gradient_steps: 4
+    policy_kwargs:
+      net_arch: {pi: [256, 256], qf: [256, 256]}
+
+classical_search:
+  pid:
+    - candidate_id: pid_reference
+      overrides: {}
+    - candidate_id: pid_humidity_focus
+      overrides:
+        vent_temp_pid: {kp: 0.10, ki: 0.003, kd: 0.01}
+        vent_rh_pid: {kp: 0.12, ki: 0.004, kd: 0.0}
+  mpc:
+    - candidate_id: mpc_h2
+      overrides: {horizon_steps: 2}
+    - candidate_id: mpc_h4
+      overrides: {horizon_steps: 4}

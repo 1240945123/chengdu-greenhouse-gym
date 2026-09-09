@@ -1,0 +1,236 @@
+"""GlassGreenhouse 离散档位 gym 环境（可行性验证版）。
+
+动作空间：MultiDiscrete([2,2,2,3,2,2,4,2,2]) = 9 执行器档位
+  [外遮阳, 顶保温, 四周保温, 顶窗, 补光, CO2, 风机, 水泵, 卷膜]
+档位 -> 连续控制映射到 GlassGreenhouse 10 维 u。
+
+reward（综合最优）：
+  reward = yield_term(果实生长) - 温度惩罚 - 湿度惩罚 - 能耗惩罚
+  * 温度白天 [20,28] / 夜间 [16,24]，湿度 [60,85]
+  * 能耗按执行器动作成本（风机/水泵/补光/CO2 电费）
+
+天气：从 greenhouse_1h.csv 的室外列驱动（固定序列）。
+"""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import casadi as ca
+import gymnasium as gym
+from gymnasium import spaces
+
+from glassgym.models.GlassGreenhouse.utils import define_model
+from glassgym.environments.utils import init_state, vaporPres2rh, rh2vaporDens, vaporDens2pres, satVp
+from glassgym.configs.default_params import init_default_params
+
+DATA = "data/processed/chengdu_agri/greenhouse_001/aligned/greenhouse_1h.csv"
+CALIB = "results/chengdu_agri_greenhouse_001/real_greenhouse/glass_calibrated_params.json"
+
+# 执行器档位大小（顺序同动作空间）
+LEVEL_DIMS = [2, 2, 2, 3, 2, 2, 4, 2, 2]
+# 档位 -> u 连续值映射
+ROOF_VENT_LEVEL = {0: 0.0, 1: 0.5, 2: 1.0}  # 顶窗 3 档: 关/半/全
+FAN_LEVEL = {0: 0.0, 1: 0.25, 2: 0.5, 3: 1.0}  # 风机 MultiDiscrete 4 档(0-3) -> 真实档 {0,1,2,4台} 归一化
+
+
+class GlassGreenhouseEnv(gym.Env):
+    metadata = {"render_modes": []}
+
+    def __init__(
+        self,
+        *,
+        params_path: str = CALIB,
+        weather_path: str = DATA,
+        start_day_index: int = 0,
+        day_indices: list[int] | None = None,
+        episode_days: int = 7,
+        dt_seconds: int = 3600,
+        yield_weight: float = 1.0,
+        temperature_weight: float = 1.0,
+        humidity_weight: float = 1.0,
+        effort_weight: float = 0.2,
+        crop_start: str = "mature",
+        disable_supplements: bool = False,
+    ) -> None:
+        super().__init__()
+        self.dt = int(dt_seconds)
+        self.episode_days = int(episode_days)
+        self.action_space = spaces.MultiDiscrete(LEVEL_DIMS)
+        self.observation_space = spaces.Box(
+            low=-1e6, high=1e6, shape=(7,), dtype=np.float32
+        )
+
+        # 参数
+        self.params = np.asarray(init_default_params(228), dtype=float)
+        import json
+        cal = json.load(open("results/chengdu_agri_greenhouse_001/physics_v4_daily_balance/selected_params.json"))
+        for k, v in cal["multipliers"].items():
+            self.params[int(k)] = float(v)
+        glass = json.load(open(params_path))
+        for k, v in glass["multipliers"].items():
+            self.params[int(k)] = float(v)
+        self.params[219] = 0.0005
+        self.params[226] = 0.2
+
+        # 模型
+        self.F = define_model(nx=28, nu=10, nd=11, n_params=228, dt=self.dt)
+
+        # 天气（室外列）: global_radiation, outdoor_temp, co2(400), wind, sky
+        w = pd.read_csv(weather_path)
+        w["timestamp"] = pd.to_datetime(w["timestamp"])
+        self.weather = w[["timestamp", "global_radiation", "outdoor_air_temperature",
+                          "outdoor_relative_humidity", "wind_speed"]].copy()
+        self.weather.columns = ["timestamp", "rad", "temp", "rh", "wind"]
+        self.weather["co2"] = 420.0
+
+        # reward 权重
+        self.yield_weight = float(yield_weight)
+        self.temperature_weight = float(temperature_weight)
+        self.humidity_weight = float(humidity_weight)
+        self.effort_weight = float(effort_weight)
+
+        self.start_day_index = int(start_day_index)
+        self.day_indices = (
+            list(day_indices) if day_indices is not None else None
+        )
+        self.crop_start = crop_start
+        self.disable_supplements = bool(disable_supplements)
+        self.x = None
+        self._step_in_episode = 0
+        self._N_steps = 24 * self.episode_days  # 24 步/天 @1h（匹配逐时天气）
+        self._prev_fruit = None
+        self._hour = 0.0
+
+    def _reset_crop(self):
+        d0 = np.zeros(11)
+        d0[0] = 100.0; d0[1] = 20.0; d0[3] = 420.0; d0[6] = 18.0
+        x = init_state(d0)
+        if self.crop_start == "early_fruiting":
+            # 5 月初坐果初期：叶/茎中等、果实少量、发育已完成(模型域内稳定)
+            x[22] = 15000.0   # cBuf 启动缓冲
+            x[23] = 30000.0   # cLeaf
+            x[24] = 50000.0   # cStem
+            x[25] = 5000.0    # cFruit
+        elif self.crop_start == "seedling":
+            # 定植苗（GH63 实测构建）——仅诊断用途，训练可能数值不稳
+            x[22] = 0.0
+            x[23] = 5842.0
+            x[24] = 7323.0
+            x[25] = 0.0
+        return x
+
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
+        self.x = self._reset_crop()
+        self._step_in_episode = 0
+        self._prev_fruit = float(self.x[25])
+        # 从天气序列起点开始（多场景时随机选）
+        if self.day_indices is not None:
+            self._day_index = int(np.random.choice(self.day_indices))
+        else:
+            self._day_index = self.start_day_index
+        self._w_idx = self._day_index * 24
+        self._hour = 0.0
+        obs = self._get_obs()
+        return obs, {}
+
+    def _action_to_u(self, action) -> np.ndarray:
+        a = np.asarray(action, dtype=int)
+        u = np.zeros(10)
+        u[0] = 0.0                                  # uBoil 无锅炉
+        u[1] = 0.0 if self.disable_supplements else float(a[5])  # uCO2 CO2发生器
+        u[2] = float(a[1])                          # uThScr 顶保温
+        u[3] = ROOF_VENT_LEVEL[int(a[3])]           # uRoofVent 顶窗
+        u[4] = 0.0 if self.disable_supplements else float(a[4])  # uLamp 补光
+        u[5] = float(a[0])                          # uBlScr 外遮阳
+        u[6] = FAN_LEVEL[int(a[6])]                 # uFan 风机
+        u[7] = float(a[7])                          # uPad 水泵
+        u[8] = float(a[2])                          # uSideScr 四周保温
+        u[9] = float(a[8])                          # uPadCurtain 卷膜
+        return u
+
+    def _weather_at(self, idx: int) -> np.ndarray:
+        i = min(max(int(idx), 0), len(self.weather) - 1)
+        row = self.weather.iloc[i]
+        rad = float(row["rad"]) if pd.notna(row["rad"]) else 0.0
+        temp = float(row["temp"]) if pd.notna(row["temp"]) else 20.0
+        rh = float(row["rh"]) if pd.notna(row["rh"]) else 70.0
+        wind = float(row["wind"]) if pd.notna(row["wind"]) else 0.0
+        d = np.zeros(11)
+        d[0] = max(rad, 0.0)
+        d[1] = temp
+        d[2] = vaporDens2pres(temp, rh2vaporDens(temp, rh))
+        d[3] = 420.0
+        d[4] = max(wind, 0.0)
+        d[5] = temp - 8.0
+        d[6] = 18.0
+        return d
+
+    def _get_obs(self) -> np.ndarray:
+        t = float(self.x[2]); rh = float(vaporPres2rh(self.x[2], self.x[15]))
+        return np.array([
+            t, rh, float(self.x[0]), float(self.x[4]),  # 温度 湿度 CO2 冠层
+            float(self._hour / 24.0),                    # 时间
+            float(self.x[25]) / 1e5,                     # 果实生物量(归一化)
+            float(self.x[26]) / 1e3,                     # 积温
+        ], dtype=np.float32)
+
+    def _integrate(self, u: np.ndarray):
+        """物理积分 + reward（u 为 10 维连续控制）。"""
+        d = self._weather_at(self._w_idx)
+        r = self.F(x0=ca.DM(self.x), u=ca.DM(u), p=ca.vertcat(ca.DM(d), ca.DM(self.params)))
+        self.x = np.asarray(r["xf"]).flatten()
+        self._w_idx += 1
+        self._step_in_episode += 1
+        self._hour = (self._hour + self.dt / 3600.0) % 24.0
+
+        temperature = float(self.x[2])
+        rh = float(vaporPres2rh(self.x[2], self.x[15]))
+        is_day = 6.0 <= self._hour < 20.0
+        t_lo, t_hi = (20.0, 28.0) if is_day else (16.0, 24.0)
+        t_dist = max(t_lo - temperature, 0.0) + max(temperature - t_hi, 0.0)
+        rh_dist = max(60.0 - rh, 0.0) + max(rh - 85.0, 0.0)
+        temp_pen = self.temperature_weight * t_dist / 10.0
+        rh_pen = self.humidity_weight * rh_dist / 40.0
+
+        fruit_gain = max(0.0, float(self.x[25]) - self._prev_fruit)
+        yield_term = self.yield_weight * fruit_gain * 1e-6 / 0.081 * 100.0
+        self._prev_fruit = float(self.x[25])
+
+        # 能耗（基于连续 u，人工/RL 公平对比）
+        effort = self.effort_weight * (
+            0.15*u[6] + 0.10*u[7] + 0.05*u[5] + 0.20*u[4] + 0.15*u[1] + 0.05*u[3]
+        )
+        reward = yield_term - temp_pen - rh_pen - effort
+
+        terminated = self._step_in_episode >= self._N_steps
+        info = {
+            "temperature": temperature, "rh": rh,
+            "temp_penalty": temp_pen, "yield_term": yield_term,
+            "effort": effort, "fruit_mg": float(self.x[25]),
+            "hour": self._hour,
+        }
+        return self._get_obs(), float(reward), terminated, False, info
+
+    def step(self, action):
+        return self._integrate(self._action_to_u(action))
+
+    def step_with_u(self, u: np.ndarray):
+        """直接注入连续控制 u（人工 benchmark 用）。"""
+        u = np.asarray(u, dtype=float).reshape(10)
+        return self._integrate(u)
+
+
+if __name__ == "__main__":
+    env = GlassGreenhouseEnv(episode_days=1, start_day_index=200)
+    obs, _ = env.reset(seed=0)
+    print("action_space:", env.action_space)
+    print("obs:", obs)
+    # 随机策略跑
+    total = 0.0
+    for _ in range(20):
+        act = env.action_space.sample()
+        obs, reward, term, trunc, info = env.step(act)
+        total += reward
+    print(f"随机策略 20 步 reward 累计: {total:.2f}")
+    print(f"温度 {info['temperature']:.1f}°C, RH {info['rh']:.0f}%, fruit {info['fruit_mg']:.0f}mg")

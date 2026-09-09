@@ -1,0 +1,359 @@
+model:
+  name: ChengduTomatoHarvestCohorts
+  architecture: greenlight_plus_dry_matter_age_cohorts
+  carbon_backend: Vanthoor2011_GreenLight
+  cohort_module: glassgym.models.harvest.cohort_model
+  calibration_module: experiments.crop.calibrate_harvest_model
+  mass_balance: initial_fruit_dm_plus_cumulative_net_change_equals_standing_plus_harvested_dm
+  cohort_input: greenlight_net_fruit_state_change_plus_native_harvest_removed
+  cohort_semantics: dry_matter_age_classes_not_individual_fruits_or_trusses
+
+source_precalibration:
+  site: chengdu_xindu_experimental_base
+  greenhouse_code: GH2024
+  cultivar: Zhainirui
+  standing_crop_samples: 180
+  fruit_fresh_dry_pairs: 20
+  fruit_dry_matter_fraction:
+    estimate: 0.08100858543455298
+    ci80: [0.07821937672460544, 0.08315448515527063]
+    ci95: [0.07582388370007698, 0.08461793001033059]
+    method: collection_date_block_bootstrap
+    bootstrap_samples: 10000
+    artifact: data/processed/chengdu_agri/greenhouse_001/reports/crop_observation_quality.json
+  use: source_site_precalibration_only
+
+target_site:
+  site: chengdu_pidu_target_greenhouse
+  greenhouse_id: 63
+  greenhouse_code: GH202602061448266452514
+  greenhouse_type: multi_span_plastic
+  greenhouse_area_m2: 192.0
+  planting_id: 59
+  planting_code: P202603251720122975035
+  cultivar: 塞尼瑞
+  registered_plant_count: 470
+  registered_plant_density_plants_m2: 1.0
+  effective_plant_density_plants_m2: 2.4479166666666665
+  effective_plant_density_source: registered_plant_count_divided_by_greenhouse_area
+  declared_seeding_date: 2026-02-20
+  declared_planting_date: 2026-03-05
+  measured_standing_crop_samples: 9
+  measured_standing_crop_dates:
+    - 2026-03-30
+    - 2026-04-27
+    - 2026-05-19
+  standing_crop_observation_artifact: results/chengdu_agri_greenhouse_001/harvest_model/processed/standing_crop_samples.csv
+  quality_flags:
+    - declared_phenology_dates_are_not_observations
+    - flower_fruit_maturity_and_end_dates_all_equal_2026_03_25
+    - no_target_sql_plant_message_rows
+    - workbook_secondary_mass_headers_are_ambiguous_and_not_used
+    - workbook_truss_yield_rows_have_no_dates_and_are_not_harvest_events
+    - registered_density_1_0_conflicts_with_470_plants_divided_by_192_m2
+    - no_harvest_event_table_or_rows
+    - prebaseline_indoor_climate_missing_for_initial_canopy_thermal_sum
+    - canopy_temperature_161_hour_gap_filled_by_audited_local_hourly_air_delta_proxy_for_diagnostic_extension_only
+  measured_harvest_events_available: 0
+
+standing_crop_validation:
+  artifact: results/chengdu_agri_greenhouse_001/harvest_model/target_crop_validation/target_crop_validation_report.json
+  baseline_date: 2026-03-30
+  calibration_date: 2026-04-27
+  validation_date: 2026-05-19
+  climate_input: target_observed_indoor_climate
+  crop_model: Vanthoor2011_GreenLight
+  uncalibrated:
+    mae_kg_m2: 0.6128696666194746
+    wmape: 0.4142112529951538
+    r2: 0.5305261777435348
+  preliminary_single_date_fit:
+    parameter: rgFruit
+    base_value: 0.328000009059906
+    multiplier: 0.4
+    calibrated_value: 0.13120000362396242
+    calibration_wmape: 0.014942389796586592
+    held_out_validation_wmape: 0.28916950735405816
+    held_out_validation_bias_kg_m2: -0.6877713491322204
+    dmf95_sensitivity_contains_observed_mean: false
+  temperature_driven_phenology:
+    model: de_koning_1994_temperature_truss_rate
+    observation_dates: 2
+    mae_trusses: 0.2714218794224952
+    wmape: 0.04934943262227185
+    interpretation: phenology_timing_supported_but_not_yield_validation
+  fixed_multi_organ_diagnostic:
+    parameters: [rgFruit, rgLeaf, rgStem]
+    multipliers: [0.5, 0.3, 0.65]
+    calibration_organ_normalized_rmse: 0.053098388080417926
+    held_out_organ_normalized_rmse: 0.2481452693384065
+    held_out_relative_error:
+      fruit: -0.31835802654119466
+      leaf: -0.21573568267601165
+      stem: -0.19192317797025482
+    adopted_as_final_parameterization: false
+  late_biomass_flux_diagnostic:
+    period: 2026-04-27_to_2026-05-19
+    gross_photosynthesis_carbohydrate_equivalent_kg_m2: 0.20349019859007672
+    external_loss_total_kg_m2: 0.07814265996131001
+    model_aboveground_change_kg_m2: 0.12103193823459743
+    inferred_observed_aboveground_change_kg_m2: 0.2084142073259617
+    aboveground_change_deficit_kg_m2: 0.08738226909136426
+    model_fraction_of_observed_change: 0.5807278677758393
+    external_loss_fraction_of_gross_photosynthesis: 0.384011910660746
+    required_gross_if_losses_and_buffer_unchanged_kg_m2: 0.29087246768144115
+    required_to_modeled_gross_ratio: 1.4294175822561002
+    modeled_lai: [0.7893296709868213, 1.0357824135421865]
+    mass_balance_residual_absolute_sum_kg_m2: 9.131372991078023e-15
+    mass_semantics: greenlight_carbohydrate_equivalent_vs_inferred_observed_dry_matter
+    holdout_used_for_parameter_selection: false
+    status: diagnostic_not_parameter_calibration
+  assimilation_capacity_sensitivity:
+    parameter: j25LeafMax
+    parameter_index: 129
+    base_value: 210.0
+    registered_multipliers: [0.75, 1.0, 1.25, 1.5, 2.0]
+    organ_calibration_iterations: 3
+    calibration_organ_nrmse_range: [0.019914074748798086, 0.2979289948692331]
+    validation_organ_nrmse_range: [0.21366965157286844, 0.47998397520473396]
+    held_out_fresh_envelope_kg_m2: [1.0724335640488534, 1.6662239932706746]
+    held_out_observed_fresh_kg_m2: 2.3784366319444445
+    envelope_contains_observed: false
+    best_case_absolute_relative_error: 0.2994457069438568
+    best_case_capacity_multiplier_for_diagnostic_only: 1.25
+    low_capacity_0_75_calibration_nrmse: 0.2979289948692331
+    held_out_used_for_calibration_or_selection: false
+    uncertainty_type: structural_sensitivity_not_predictive_interval
+    adopted_as_final_parameterization: false
+  stage_dependent_sink_structure:
+    reference_timestamp: 2026-04-27
+    reference_t_can_sum_deg_day: 501.34488194444435
+    formula: max_1_t_can_sum_over_reference_power_exponent_capped_at_2
+    registered_scenarios:
+      - constant
+      - sqrt_all
+      - linear_all
+      - sqrt_fruit
+      - linear_fruit
+    calibration_organ_nrmse: 0.053098388080417926
+    development_organ_nrmse_range: [0.2366813259080944, 0.29218763394328473]
+    development_fresh_envelope_kg_m2: [1.6212422395453254, 1.751298365563004]
+    development_observed_fresh_kg_m2: 2.3784366319444445
+    envelope_contains_observed: false
+    best_case_fresh_absolute_relative_error: 0.2636766765018818
+    constant_development_organ_nrmse: 0.2481452693384065
+    lowest_development_organ_nrmse: 0.2366813259080944
+    posthoc_structure_development: true
+    independent_validation: false
+    scenario_selected_from_development: false
+    uncertainty_type: posthoc_structural_sensitivity_not_predictive_interval
+    adopted_as_final_parameterization: false
+  initial_thermal_sum:
+    current_value_deg_day: 0.0
+    status: unknown_prebaseline_accumulation_initialized_zero_not_validated
+    missing_driver_interval: 2026-03-05_to_2026-03-30_indoor_canopy_temperature
+    phenology_prior_deg_day: [275.57121616812145, 279.61418306691246, 300.7592763545235]
+    prior_quantiles: [0.10, 0.50, 0.90]
+    held_out_prediction_envelope_fresh_kg_m2: [1.28490078750446, 1.3092827089173886]
+    held_out_observed_fresh_kg_m2: 2.3784366319444445
+    envelope_contains_observed: false
+    best_case_absolute_relative_error: 0.4495196166538143
+    uncertainty_type: structural_sensitivity_not_predictive_interval
+    held_out_mass_used_to_construct_or_select_scenario: false
+    adopted_as_final_parameterization: false
+  acceptance:
+    wmape_max: 0.25
+    minimum_held_out_dates: 2
+    passed: false
+  use: preliminary_crop_development_evidence_not_harvest_validation
+
+calibration:
+  harvest_area_normalization:
+    model_target_area_basis: fixed_configured_production_area
+    target_normalization_area_m2: 192.0
+    model_fresh_kg_m2_formula: harvested_fresh_kg_divided_by_normalization_area_m2
+    actual_harvested_area_role: coverage_and_local_intensity_audit_only
+    local_fresh_kg_m2_used_for_fit: false
+    harvested_area_must_not_exceed_normalization_area: true
+  season_completion_evidence:
+    template: data/raw/chengdu_agri/greenhouse_001/crop/harvest_seasons_template.csv
+    required_with_harvest_events: true
+    complete_status: complete
+    complete_season_requires_end_datetime: true
+    complete_season_requires_source_record: true
+    ongoing_seasons_used_for_fit: false
+    accepted_completion_sources:
+      - crop_clearance_record
+      - final_harvest_and_removal_record
+      - production_log_signed_by_site_manager
+  driver_construction:
+    module: experiments.crop.build_chengdu_harvest_drivers
+    manifest: configs/crops/chengdu_harvest_driver_manifest.yml
+    current_artifact: results/chengdu_agri_greenhouse_001/harvest_model/drivers/target_partial_harvest_drivers.csv
+    current_audit: results/chengdu_agri_greenhouse_001/harvest_model/drivers/target_partial_harvest_driver_audit.json
+    current_state_rows: 2650
+    current_driver_rows: 2649
+    current_span_days: 110.375
+    current_mass_accounting_residual_kg_m2: 0.0
+    current_calibration_eligible: false
+    current_blocking_reasons:
+      - crop_model_not_accepted
+      - management_protocol_missing
+      - season_incomplete
+    required_driver_model_status: accepted_target_crop_model
+    measured_harvest_timestamps_used_to_build_pick_flags: false
+    diagnostic_horizon_extension:
+      trajectory_artifact: results/chengdu_agri_greenhouse_001/harvest_model/target_crop_validation/target_crop_trajectory_driver_horizon.csv
+      audit_artifact: results/chengdu_agri_greenhouse_001/harvest_model/target_crop_validation/target_crop_trajectory_driver_horizon_audit.json
+      start: 2026-04-01T00:00:00+08:00
+      end: 2026-07-20T09:00:00+08:00
+      canopy_temperature_proxy_rows: 161
+      canopy_temperature_proxy_reference_mae_c: 2.4945786210317453
+      canopy_temperature_proxy_uncertainty_propagated: false
+      status: diagnostic_extrapolation_not_accepted
+  fitted_parameters:
+    - maturity_thermal_time_deg_day
+    - dry_matter_fraction
+  base_temperature_c:
+    status: must_be_declared_before_target_fit
+  maturity_thermal_time_deg_day_bounds: [200.0, 1200.0]
+  dry_matter_fraction_bounds: [0.05, 0.12]
+  objective_components:
+    - batch_wmape
+    - cumulative_wmape
+    - first_harvest_date_error_days
+  split_policy: chronological_complete_seasons
+  test_data_used_for_fit: false
+  picking_schedule:
+    status: must_be_declared_from_management_protocol
+    derived_from_observed_harvest_outcome: false
+
+uncertainty:
+  dry_matter_fraction: collection_date_block_bootstrap
+  harvest_prediction: joint_parameter_refit_and_season_stratified_residual_bootstrap
+  parameter_estimation:
+    method: season_residual_moving_block_parameter_refit_bootstrap
+    bootstrap_samples: 200
+    block_days: 7
+  prediction_ensemble_samples: 2000
+  intervals: [0.80, 0.95]
+  bootstrap_seed: 20260727
+  scope: conditional_on_supplied_greenlight_drivers_and_model_structure
+  output_targets: [batch_fresh_kg_m2, cumulative_fresh_kg_m2]
+  block_boundary_policy: never_cross_training_season_boundaries
+  forecast_cumulative_reset_policy: reset_for_each_forecast_season
+  driver_scenario_ensemble:
+    status: optional_not_currently_supplied
+    cli_argument: --uncertainty-driver-scenarios
+    builder_module: experiments.crop.build_chengdu_harvest_driver_scenarios
+    minimum_scenarios: 2
+    scenario_sampling_policy: uniform
+    parameter_sampling_policy: uniform
+    point_driver_implicitly_included: false
+    required_columns: [driver_scenario_id, driver_uncertainty_source]
+    allowed_sources:
+      - greenhouse_climate_model_parameter_uncertainty
+      - outdoor_weather_scenario_uncertainty
+    invariant_fields:
+      - season_id
+      - timestamp
+      - dt_hours
+      - pick
+      - pick_source
+      - driver_model_status
+      - season_complete
+      - greenhouse_id
+      - greenhouse_code
+      - planting_code
+    scope_when_supplied: conditional_on_supplied_greenlight_driver_ensemble_and_model_structure
+  reported_diagnostics:
+    - batch_coverage
+    - batch_normalized_mean_width
+    - batch_winkler_score
+    - cumulative_coverage
+    - cumulative_normalized_mean_width
+    - cumulative_winkler_score
+    - initial_thermal_sum_structural_sensitivity
+  not_yet_propagated:
+    - greenhouse_climate_model_parameter_uncertainty
+    - outdoor_weather_scenario_uncertainty
+    - xindu_to_pidu_site_transfer_uncertainty
+    - structural_uncertainty_of_dry_matter_age_cohorts
+
+external_harvest_prior:
+  dataset: wur_agc2_v2
+  doi: 10.4121/uuid:88d22c60-21b3-4ea8-90db-20249a5be2a7
+  license: CC0
+  cultivar: Axiany
+  site: Bleiswijk_Netherlands
+  greenhouse_type: high_tech_glasshouse
+  compartment_count: 6
+  normalized_harvest_events: 139
+  source_artifact: data/processed/external/wur_agc2/external_harvest_observations.csv
+  prior_artifact: data/processed/external/wur_agc2/external_harvest_priors.json
+  evidence_class: external_observed
+  target_eligible: false
+  role: transfer_prior_and_pipeline_validation_only
+
+simulated_harvest_prior:
+  method: external_curve_weather_conditioned_bootstrap
+  chengdu_weather_seasons: 6
+  scenarios: 120
+  synthetic_harvest_events: 1402
+  season_duration_days: 120
+  artifact_root: results/chengdu_agri_greenhouse_001/harvest_model/simulated_prior/statistical_weather_conditioned
+  evidence_class: simulated_prior
+  target_eligible: false
+  status: diagnostic_data_augmentation_not_greenlight_harvest_validation
+
+greenlight_cohort_harvest_prior:
+  method: chengdu_physics_greenlight_dry_matter_age_cohort
+  chengdu_weather_seasons: 6
+  climate_trajectories: 18
+  paired_cohort_scenarios: 72
+  synthetic_harvest_events: 654
+  season_duration_days: 120
+  timestep_seconds: 3600
+  sampling_design: paired_latin_hypercube_across_climate_sensitivity
+  artifact_root: results/chengdu_agri_greenhouse_001/harvest_model/simulated_prior/greenlight_cohort
+  evidence_class: simulated_prior
+  target_eligible: false
+  status: diagnostic_mechanistic_prior_not_target_harvest_validation
+
+validation:
+  minimum_complete_target_seasons: 2
+  preferred_complete_target_seasons: 3
+  held_out_target_seasons: 1
+  evidence_requirements:
+    - target_greenhouse_id_and_code_match
+    - independent_season_completion_evidence
+    - driver_model_status_is_accepted_target_crop_model
+    - driver_validation_passed
+    - latest_chronological_target_season_is_test
+    - conditional_uncertainty_scope_declared
+  acceptance:
+    first_harvest_date_error_days_max: 5.0
+    harvest_timing_wasserstein_days_max: 7.0
+    median_harvest_date_error_days_abs_max: 7.0
+    p90_harvest_date_error_days_abs_max: 10.0
+    batch_wmape_max: 0.20
+    cumulative_wmape_max: 0.15
+    final_yield_bias_percent_abs_max: 10.0
+    cumulative_r2_min: 0.80
+    batch_interval_80_coverage_min: 0.70
+    batch_interval_95_coverage_min: 0.85
+    batch_interval_80_normalized_mean_width_max: 1.50
+    batch_interval_95_normalized_mean_width_max: 2.00
+    cumulative_interval_80_coverage_min: 0.70
+    cumulative_interval_95_coverage_min: 0.85
+    cumulative_interval_80_normalized_mean_width_max: 0.50
+    cumulative_interval_95_normalized_mean_width_max: 0.80
+
+status:
+  source_site_precalibrated: true
+  target_harvest_calibrated: false
+  target_harvest_validated: false
+  target_standing_crop_validation_passed: false
+  label: awaiting_more_pidu_crop_dates_and_measured_harvest_events
+  process_prior_status: external_transfer_calibrated_not_target_validated
+  process_prior_artifact: data/processed/external/wur_agc2/wur_process_priors.json

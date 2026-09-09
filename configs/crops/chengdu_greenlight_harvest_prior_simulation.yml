@@ -1,0 +1,33 @@
+method: chengdu_physics_greenlight_cohort_ensemble
+seed: 20260729
+hourly_timestep_seconds: 3600
+season_days: 120
+draws_per_climate: 4
+parallel_workers: 3
+
+weather:
+  source: ERA5_reanalysis
+  seasons: [2023_spring, 2023_autumn, 2024_spring, 2024_autumn, 2025_spring, 2025_autumn]
+
+climate_sensitivity:
+  calibrated_low: 0.75
+  calibrated: 1.0
+  calibrated_high: 1.25
+  interpretation: sensitivity_levels_not_confidence_intervals
+
+harvest_priors:
+  base_temperature_c: 10.0
+  maturity_thermal_time_deg_day: [583.7624166768941, 612.7034811152284]
+  maturity_source: data/processed/external/wur_agc2/wur_process_priors.json
+  maturity_source_doi: 10.4121/uuid:88d22c60-21b3-4ea8-90db-20249a5be2a7
+  dry_matter_fraction: [0.07582388370007698, 0.08461793001033059]
+  dry_matter_fraction_source: chengdu_xindu_source_site_precalibration
+  minimum_pick_fresh_kg_m2: [0.0, 0.15]
+  pick_interval_days: [5, 5]
+  pick_hour_local: [7, 10]
+
+evidence:
+  evidence_class: simulated_prior
+  target_eligible: false
+  target_validation_permitted: false
+  calibration_status: external_transfer_calibrated_not_target_validated

@@ -1,0 +1,12 @@
+schema_version: historical-forecast-emulator-v2
+label: historical weather analog emulator; not operational NWP
+fit_role: fit
+fit_year: 2023
+select_role: select
+select_year: 2024
+retrospective_role: retrospective
+retrospective_year: 2025
+dt_seconds: 900
+horizon_steps: 48
+candidate_blend_weights: [0.0, 0.25, 0.5, 0.75, 1.0]
+artifact_manifest: data/processed/chengdu_agri/greenhouse_001/forecasts/v2/manifest.json

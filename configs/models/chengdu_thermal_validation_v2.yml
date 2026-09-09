@@ -1,0 +1,19 @@
+schema_version: chengdu-thermal-validation-v2
+model_backend: ChengduPhysicsV2
+train_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v2/train.csv
+validation_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v2/val.csv
+test_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v2/test.csv
+shortlist_size: 6
+search_space:
+  "208": [4.0, 8.0]
+  "209": [0.3, 0.45, 0.6]
+  "210": [2.5, 4.0]
+  "211": [6.0, 8.0]
+  "212": [0.6]
+  "213": [1.0]
+  "214": [0.6, 1.0]
+  "215": [1.6, 3.0]
+validation_horizons_hours: [6, 24, 72]
+physical_envelope:
+  air_temperature_c: [-10.0, 60.0]
+  relative_humidity_percent: [0.0, 100.0]

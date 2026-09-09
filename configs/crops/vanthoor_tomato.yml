@@ -1,0 +1,79 @@
+model:
+  name: Vanthoor2011_GreenLight
+  crop: greenhouse tomato
+  source_doi: 10.1016/j.biosystemseng.2011.08.005
+  source_title: "A methodology for model-based greenhouse design: Part 2, description and validation of a tomato yield model"
+
+implementation:
+  module: glassgym.models.GreenLight.crop
+  greenlight_doi: 10.1016/j.biosystemseng.2020.03.010
+  climate_backend: ChengduPhysics
+  crop_state_indices: [22, 23, 24, 25, 26, 27]
+  greenlight_parameter_indices: [0, 207]
+  chengdu_climate_multiplier_indices: [208, 215]
+  harvest_flux: fruit_harvest
+  harvest_integration: trapezoidal_per_environment_step
+  production_metric: harvested_fruit_plus_final_minus_initial_fruit_carbon
+  carbohydrate_buffer_nonnegative_guard:
+    method: near_zero_continuous_availability_gate
+    scale_mg_m2: 1.0
+    purpose: prevent_nonphysical_organ_allocation_from_empty_buffer
+    normal_buffer_effect: below_0_1_percent_at_1000_mg_m2
+
+parameterization:
+  source: glassgym.configs.default_params
+  target_site_harvest_calibrated: false
+  cultivar_calibrated: false
+  dry_matter_fraction: 0.0627
+  dry_matter_fraction_parameter_index: 206
+  status_label: literature_parameterized_simulated_yield
+  chengdu_source_site_fruit_dry_matter_fraction:
+    estimate: 0.08100858543455298
+    ci95: [0.07582388370007698, 0.08461793001033059]
+    source_greenhouse_code: GH2024
+    use: source_site_precalibration_only
+  target_parameter_index_updated: false
+
+target_standing_crop_precalibration:
+  greenhouse_code: GH202602061448266452514
+  parameter: rgFruit
+  parameter_index: 154
+  multiplier: 0.4
+  fit_date: 2026-04-27
+  held_out_date: 2026-05-19
+  held_out_wmape: 0.28916950735405816
+  accepted: false
+  apply_as_final_target_parameter: false
+  temperature_driven_phenology_wmape: 0.04934943262227185
+  fixed_multi_organ_held_out_nrmse: 0.2481452693384065
+  initial_t_can_sum_status: unknown_prebaseline_accumulation_initialized_zero_not_validated
+  initial_t_can_sum_phenology_prior_deg_day: [275.57121616812145, 279.61418306691246, 300.7592763545235]
+  initial_t_can_sum_holdout_envelope_fresh_kg_m2: [1.28490078750446, 1.3092827089173886]
+  initial_t_can_sum_envelope_contains_observed: false
+  initial_t_can_sum_sensitivity_type: structural_sensitivity_not_predictive_interval
+  late_biomass_model_fraction_of_observed_change: 0.5807278677758393
+  late_biomass_required_to_modeled_gross_ratio: 1.4294175822561002
+  late_biomass_diagnostic_status: diagnostic_not_parameter_calibration
+  assimilation_capacity_registered_multipliers: [0.75, 1.0, 1.25, 1.5, 2.0]
+  assimilation_capacity_holdout_envelope_fresh_kg_m2: [1.0724335640488534, 1.6662239932706746]
+  assimilation_capacity_best_case_relative_error: 0.2994457069438568
+  assimilation_capacity_envelope_contains_observed: false
+  assimilation_capacity_status: diagnostic_not_final_target_parameterization
+
+external_validation:
+  location: Pengzhou, Chengdu, Sichuan, China
+  greenhouse_type: multi-span plastic greenhouse
+  fresh_yield_kg_m2: [10.1625, 10.314]
+  reported_yield_kg_ha: [101625, 103140]
+  planting_density_plants_ha: 29430
+  single_fruit_mass_kg: [0.18, 0.19]
+  source_doi: 10.13733/j.jcam.issn.2095-5553.2024.05.010
+  use: plausibility_only
+  calibration_target: false
+
+limitations:
+  - No measured harvest series from the target Chengdu Pidu multi-span plastic greenhouse.
+  - The external reference uses a different greenhouse type, cultivar, and management regime.
+  - Heating and CO2 injection are disabled in the controller benchmark.
+  - Yield must be reported as simulated until target-site harvest data are available.
+  - The measured 0.08101 dry-matter fraction is from Xindu standing-fruit samples, not Pidu harvest events.

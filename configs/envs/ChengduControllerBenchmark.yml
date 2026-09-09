@@ -1,0 +1,84 @@
+ChengduControllerBenchmark:
+  num_params: 216
+  nx: 28
+  nu: 6
+  nd: 11
+  model_backend: ChengduPhysics
+  u_min: [0, 0, 0, 0, 0, 0]
+  u_max: [1, 1, 1, 1, 1, 1]
+
+  dt: 900
+  delta_u_max: 0.1
+  pred_horizon: 0.5
+  season_length: 4
+
+  controlled_inputs: [uThScr, uVent, uLamp, uBlScr]
+  normalize_actions: true
+
+  safety_config:
+    schema_version: safety-projection-v2
+    normal_slew_limit: 0.1
+    emergency_vent_slew_limit: 1.0
+    rain_close_threshold_mm_h: 0.0
+    wind_close_threshold_m_s: 10.0
+    lamp_start_hour: 6.0
+    lamp_end_hour: 20.0
+    wet_pad_rh_lockout_percent: 85.0
+    high_temperature_emergency_c: 34.0
+
+  forecast_provider:
+    schema_version: forecast-provider-v2
+    kind: historical_emulator
+    artifact_manifest: data/processed/chengdu_agri/greenhouse_001/forecasts/v2/manifest.json
+    expected_artifact_fingerprint: b1e101f9763e7b13ef6434c4066c05f2bb0ed9a0e83821c1d4bf46fb9e7a32a8
+    expected_source_sha256:
+      "2023": f52c3236e49d669922e64d26086e00507a0e1cf176b360d70dc656e2b2123f24
+      "2024": 7d5128a570530661d2f7d6cc43a147ac5a5b65a743434e2bb66c7d187cda4f3b
+
+  observation_modules:
+    - BasicCropObservations
+    - ControlObservations
+    - IndoorClimateObservations
+    - WeatherObservationsV2
+    - TimeObservations
+
+  weather_scenario_sampler: fixed
+  weather_scenario_sampler_kwargs:
+    location: Chengdu
+    growth_year: 2025
+    start_day: 0
+
+  weather_repository_kwargs:
+    weather_data_dir: data/processed/chengdu_agri/greenhouse_001/weather_era5/full_years/
+    schema_version: v2
+    load_weather_data_fn: load_weather_data_v2
+
+  eval_scenarios:
+    - {location: Chengdu, growth_year: 2025, start_day: 226}
+
+  constraints:
+    co2_min: 300.0
+    co2_max: 1600.0
+    temp_min: 15.0
+    temp_max: 34.0
+    rh_min: 50.0
+    rh_max: 85.0
+
+  reward_fn: ChengduClimateReward
+  reward_kwargs:
+    temp_day_low: 20.0
+    temp_day_high: 28.0
+    temp_night_low: 16.0
+    temp_night_high: 24.0
+    rh_low: 60.0
+    rh_high: 85.0
+    day_start: 6.0
+    day_end: 20.0
+    temperature_weight: 1.0
+    humidity_weight: 1.0
+    lamp_weight: 0.1
+    effort_weight: 0.2
+    action_change_weight: 0.3
+
+  parameter_provider: fixed
+  parameter_provider_kwargs: {}

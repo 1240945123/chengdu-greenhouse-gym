@@ -1,0 +1,27 @@
+method: chengdu_regional_external_transfer_v2_season_adaptive
+controller_benchmark_root: results/chengdu_agri_greenhouse_001/controller_benchmark/six_season_120d_guarded_v2
+
+sources:
+  registry: data/external/crops/chengdu_regional_tomato/source_registry.csv
+
+timing:
+  base_temperature_c: 10.0
+  upper_temperature_c: 30.0
+  onset_days: [65, 70, 75]
+  primary_source_id: chongzhou_ai_2023
+
+partial_yield_shape:
+  wur_observations: data/processed/external/wur_agc2/external_harvest_observations.csv
+  wur_crop_start: 2019-12-16
+  wur_crop_duration_days: 166
+  regional_crop_duration_days: 212
+  evaluation_day: 120
+  applicable_seasons: [spring]
+
+output_json: data/processed/external/chengdu_regional_tomato/regional_transfer_priors.json
+
+evidence:
+  evidence_class: external_transfer_prior
+  target_eligible: false
+  target_validation_permitted: false
+  calibration_status: regional_external_transfer_not_target_validated

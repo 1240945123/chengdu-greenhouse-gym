@@ -1,0 +1,44 @@
+﻿GreenLightEnv:
+  horizon_steps: 4
+
+  candidate_levels:
+    uBoil: [0.0, 0.25, 0.5, 0.75, 1.0]
+    uCO2: [0.0, 0.25, 0.5, 0.75, 1.0]
+    uVent: [0.0, 0.25, 0.5, 0.75, 1.0]
+    uLamp: [0.0, 1.0]
+
+  include_current: true
+  include_conservative: true
+  fallback_control: [0.5, 0.0, 0.5, 0.1, 0.0, 0.0]
+
+  controller_model:
+    schema_version: controller-model-v2
+    outdoor_exchange_per_hour: 0.25
+    ventilation_exchange_per_hour: 1.50
+    wind_exchange_per_hour_per_m_s: 0.03
+    screen_exchange_reduction: 0.50
+    solar_gain_per_w_m2_hour: 0.0010
+    lamp_gain_per_hour: 1.00
+    boiler_gain_per_hour: 8.00
+    vapor_exchange_per_hour: 0.20
+    vapor_ventilation_exchange_per_hour: 1.50
+    vapor_source_pa_per_hour: 20.00
+    lamp_drying_pa_per_hour: 20.00
+    boiler_drying_pa_per_hour: 40.00
+
+  temp_day_setpoint: 19.5
+  temp_night_setpoint: 16.5
+  co2_day_setpoint: 800.0
+  rh_max: 85.0
+
+  objective_weights:
+    temperature_error: 1.0
+    co2_error: 0.25
+    rh_violation: 4.0
+    heat_cost: 0.25
+    co2_cost: 0.15
+    lamp_cost: 0.3
+    action_change: 0.05
+    fruit_growth: 0.000001
+
+

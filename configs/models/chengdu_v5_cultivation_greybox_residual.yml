@@ -1,0 +1,15 @@
+schema_version: chengdu-v5-cultivation-greybox-residual-selection
+train_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v5_cultivation_window/train.csv
+validation_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v5_cultivation_window/val.csv
+v4_params_json: results/chengdu_agri_greenhouse_001/physics_v4_daily_balance/selected_params.json
+heat_regime_weights:
+  normal: 1.0
+  high: 5.0
+  extreme: 5.0
+feature_sets: [thermal_dynamics]
+alphas: [0.1, 1.0, 10.0]
+gains: [0.5, 0.75, 1.0]
+fit_fraction: 0.8
+base_top_k: 3
+validation_horizons: [1, 6, 24, 72]
+validation_stride: 6

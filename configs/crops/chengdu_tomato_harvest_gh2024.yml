@@ -1,0 +1,72 @@
+model:
+  name: ChengduTomatoHarvestCohorts
+  architecture: greenlight_plus_dry_matter_age_cohorts
+  carbon_backend: Vanthoor2011_GreenLight
+  cohort_module: glassgym.models.harvest.cohort_model
+  calibration_module: experiments.crop.calibrate_harvest_model
+  mass_balance: initial_fruit_dm_plus_cumulative_net_change_equals_standing_plus_harvested_dm
+  cohort_input: greenlight_net_fruit_state_change_plus_native_harvest_removed
+  cohort_semantics: dry_matter_age_classes_not_individual_fruits_or_trusses
+
+# 方案 A：GH2024（新都实验基地，70 m2 塑料连栋基质培）作为主目标棚。
+# 2025 年春茬「寨尼瑞」番茄，定植 2025-01-19，成熟 2025-04-23。
+# plant_message_info 提供 180 条破坏性取样（19 个采集日期，22 个成熟果鲜重/干重对）。
+target_site:
+  site: chengdu_xindu_target_greenhouse
+  greenhouse_id: 1
+  greenhouse_code: GH2024
+  greenhouse_type: multi_span_plastic
+  greenhouse_area_m2: 70.0
+  planting_id: 56
+  planting_code: P202505091420245705511
+  cultivar: 寨尼瑞
+  registered_plant_count: 2640
+  registered_plant_density_plants_m2: 2.5
+  effective_plant_density_plants_m2: 2.5
+  effective_plant_density_source: planting_info_plant_den
+  declared_seeding_date: 2024-11-22
+  declared_planting_date: 2025-01-19
+  declared_first_flower_date: 2025-03-11
+  declared_first_fruit_date: 2025-04-01
+  declared_mature_date: 2025-04-23
+  measured_standing_crop_samples: 180
+  measured_standing_crop_dates_first: 2025-01-19
+  measured_standing_crop_dates_last: 2025-05-20
+  standing_crop_observation_artifact: results/chengdu_agri_greenhouse_001/harvest_model_gh2024/processed/standing_crop_samples.csv
+  quality_flags:
+    - no_2025_hourly_indoor_climate_for_crop_model_driving
+    - standing_crop_samples_not_harvest_events
+    - no_harvest_event_table_or_rows
+    - no_target_2025_hourly_climate_sensor_stream
+  measured_harvest_events_available: 0
+
+validation:
+  minimum_complete_target_seasons: 2
+  preferred_complete_target_seasons: 3
+  held_out_target_seasons: 1
+  acceptance:
+    first_harvest_date_error_days_max: 5.0
+    harvest_timing_wasserstein_days_max: 7.0
+    median_harvest_date_error_days_abs_max: 7.0
+    p90_harvest_date_error_days_abs_max: 10.0
+    batch_wmape_max: 0.20
+    cumulative_wmape_max: 0.15
+    final_yield_bias_percent_abs_max: 10.0
+    cumulative_r2_min: 0.80
+    batch_interval_80_coverage_min: 0.70
+    batch_interval_95_coverage_min: 0.85
+    batch_interval_80_normalized_mean_width_max: 1.50
+    batch_interval_95_normalized_mean_width_max: 2.00
+    cumulative_interval_80_coverage_min: 0.70
+    cumulative_interval_95_coverage_min: 0.85
+    cumulative_interval_80_normalized_mean_width_max: 0.50
+    cumulative_interval_95_normalized_mean_width_max: 0.80
+
+calibration:
+  maturity_thermal_time_deg_day_bounds: [200.0, 1200.0]
+  dry_matter_fraction_bounds: [0.05, 0.12]
+
+uncertainty:
+  parameter_estimation:
+    bootstrap_samples: 200
+  prediction_ensemble_samples: 2000

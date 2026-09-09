@@ -1,0 +1,25 @@
+simulation:
+  method: external_curve_weather_conditioned_bootstrap
+  evidence_class: simulated_prior
+  target_eligible: false
+  seed: 20260729
+  draws_per_season: 20
+  weather_seasons: [2023_spring, 2023_autumn, 2024_spring, 2024_autumn, 2025_spring, 2025_autumn]
+  gdd_base_temperature_c: 10.0
+  timing_scale_bounds: [0.70, 1.30]
+  radiation_response_exponent: 0.35
+  radiation_scale_bounds: [0.70, 1.30]
+  yield_noise_sigma: 0.08
+  dry_matter_fraction_bounds: [0.07582388370007698, 0.08461793001033059]
+sources:
+  harvest_curves: data/processed/external/wur_agc2/external_harvest_observations.csv
+  harvest_prior: data/processed/external/wur_agc2/external_harvest_priors.json
+  weather_directory: data/processed/chengdu_agri/greenhouse_001/weather_era5/seasons
+outputs:
+  root: results/chengdu_agri_greenhouse_001/harvest_model/simulated_prior/statistical_weather_conditioned
+limitations:
+  - statistical_prior_not_greenlight_state_simulation
+  - wur_curve_transfer_from_dutch_high_tech_glasshouse
+  - outdoor_weather_scaling_not_indoor_climate_validation
+  - partial_120_day_seasons
+  - not_target_calibration_or_validation_evidence

@@ -1,0 +1,59 @@
+GreenLightEnv:
+  ### GreenLight model arguments ###
+  num_params: 216
+  nx: 28
+  nu: 6
+  nd: 10
+  model_backend: ChengduPhysics
+  u_min: [0, 0, 0, 0, 0, 0]
+  u_max: [1, 1, 1, 1, 1, 1]
+
+  ### GreenLight environment arguments ###
+  dt: 900
+  delta_u_max: 0.1
+  pred_horizon: 0.5
+  season_length: 30
+
+  ### GreenLightEnv arguments ###
+  controlled_inputs: ["uBoil", "uCO2", "uThScr", "uVent", "uLamp", "uBlScr"]
+  normalize_actions: True
+
+  observation_modules:
+    - BasicCropObservations
+    - ControlObservations
+    - IndoorClimateObservations
+    - WeatherObservations
+    - TimeObservations
+
+  weather_scenario_sampler: "fixed"
+  weather_scenario_sampler_kwargs:
+    location: Chengdu
+    growth_year: 2026
+    start_day: 0
+
+  weather_repository_kwargs:
+    weather_data_dir: data/processed/chengdu_agri/greenhouse_001/weather/
+    load_weather_data_fn: load_weather_data
+
+  eval_scenarios:
+    - {location: Chengdu, growth_year: 2026, start_day: 0}
+
+  constraints:
+    co2_min: 300.
+    co2_max: 1600.
+    temp_min: 15.
+    temp_max: 34.
+    rh_min: 50.
+    rh_max: 85.
+
+  reward_fn: GreenhouseReward
+  reward_kwargs:
+    elec_price: 0.3
+    heating_price: 0.09
+    co2_price: 0.3
+    fruit_price: 1.6
+    dmfm: 0.065
+    pen_lamp: 0.1
+
+  parameter_provider: fixed
+  parameter_provider_kwargs: {}

@@ -1,0 +1,25 @@
+dataset_id: amsterdam_reference
+description: Reference weather-only dataset shipped with GreenLight-Gym2.
+location: Amsterdam
+greenhouse_id: reference_greenlight
+source: original_greenlight_gym2
+
+weather:
+  root: data/processed/amsterdam_reference/weather/
+  locations:
+    - Amsterdam
+  years:
+    - 2008
+    - 2009
+    - 2010
+    - 2011
+    - 2012
+
+default_scenario:
+  location: Amsterdam
+  growth_year: 2010
+  start_day: 59
+
+outputs:
+  results_root: results/amsterdam_reference/
+  train_data_root: train_data/amsterdam_reference/

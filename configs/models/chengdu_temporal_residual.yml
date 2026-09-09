@@ -1,0 +1,19 @@
+schema_version: chengdu-temporal-residual-v1
+train_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v3/train.csv
+validation_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v3/val.csv
+v4_params_json: results/chengdu_agri_greenhouse_001/physics_v4_daily_balance/selected_params.json
+ridge_model_json: results/chengdu_agri_greenhouse_001/physics_v4_greybox_residual/selected_model.json
+feature_set: periodic_interactions
+lookback: 24
+hidden_dim: 16
+architectures: [lstm, tcn]
+seeds: [0, 1, 2]
+fit_fraction: 0.8
+training:
+  learning_rate: 0.001
+  batch_size: 64
+  max_epochs: 200
+  patience: 25
+evaluation:
+  horizons: [1, 6, 24, 72]
+  stride: 6

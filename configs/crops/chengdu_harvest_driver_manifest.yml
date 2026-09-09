@@ -1,0 +1,16 @@
+timezone: Asia/Shanghai
+maximum_interval_hours: 24
+
+management_protocol:
+  status: missing
+
+seasons:
+  - season_id: pidu_2026_spring_partial
+    trajectory_path: results/chengdu_agri_greenhouse_001/harvest_model/target_crop_validation/target_crop_trajectory_driver_horizon.csv
+    greenhouse_id: 63
+    greenhouse_code: GH202602061448266452514
+    planting_code: P202603251720122975035
+    initial_fruit_maturity_fraction: 0.0
+    season_complete: false
+    driver_model_status: diagnostic_not_final
+    air_temperature_source: observed_indoor

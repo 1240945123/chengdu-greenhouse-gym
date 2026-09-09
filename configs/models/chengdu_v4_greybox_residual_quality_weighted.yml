@@ -1,0 +1,12 @@
+schema_version: chengdu-v4-greybox-residual-quality-weighted-selection
+train_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v4_quality_aware/train.csv
+validation_csv: data/processed/chengdu_agri/greenhouse_001/trajectories/v4_quality_aware/val.csv
+v4_params_json: results/chengdu_agri_greenhouse_001/physics_v4_daily_balance/selected_params.json
+sample_weight_column: transition_quality_weight
+feature_sets: [base, periodic, periodic_interactions]
+alphas: [0.1, 1.0, 10.0, 100.0]
+gains: [0.25, 0.5, 0.75, 1.0]
+fit_fraction: 0.8
+base_top_k: 2
+validation_horizons: [1, 6, 24, 72]
+validation_stride: 6

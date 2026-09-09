@@ -1,0 +1,25 @@
+method: chengdu_reproductive_heat_stress_v3
+controller_benchmark_root: results/chengdu_agri_greenhouse_001/controller_benchmark/six_season_120d_guarded_v2
+regional_prior_path: data/processed/external/chengdu_regional_tomato/regional_transfer_priors.json
+artifact_prefix: regional_v3_
+draws_per_episode: 16
+sampling_seed: 20260818
+max_workers: 8
+
+reproductive_heat_stress:
+  optimal_mean_temperature_c: 25.0
+  severe_mean_temperature_c: 29.0
+  trailing_window_hours: 240
+  floor_retention_by_scenario:
+    sensitive: 0.25
+    central: 0.50
+    tolerant: 0.75
+  scenario_semantics: literature_bounded_sensitivity_not_confidence_interval
+  humidity_vpd_role: diagnostic_only
+
+evidence:
+  registry: data/external/crops/tomato_reproductive_stress/source_registry.csv
+  evidence_class: external_transfer_prior
+  target_eligible: false
+  target_validation_permitted: false
+

@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glassgym"
+version = "0.3.1"
+description = "Research codebase for RL-based control of a real glass greenhouse (Chengdu/Pidu GH63): GlassGreenhouse physics, Vanthoor crop model, discrete-actuator gym environment and controller benchmarks"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }
+
+authors = [
+  { name = "Bart van Laatum", email = "bart.vanlaatum@wur.nl" },
+  { name = "Xie Tianchen" },
+]
+keywords = ["reinforcement learning", "greenhouse", "control", "gymnasium", "greenlight", "crop production", "glass greenhouse", "chengdu"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "casadi>=3.6",
+  "numpy<2.0",
+  "scipy>=1.10",
+  "pandas>=2.0",
+  "openpyxl>=3.1",
+  "py7zr>=1.1,<2",
+  "gymnasium>=0.29",
+  "PyYAML>=6.0",
+  "pytz>=2019.3",
+]
+
+[project.optional-dependencies]
+train = [
+  "torch>=2.0.0",
+  "stable-baselines3>=2.1.0",
+  "sb3_contrib>=2.1.0",
+  "wandb>=0.19",
+  "tensorboard>=2.18",
+  "tqdm>=4.60",
+  "matplotlib>=3.10",
+  "requests>=2.32",
+  "geopy>=2.4",
+]
+data = [
+  "xlrd>=2.0.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/BartvLaatum/GreenLight-Gym2"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["glassgym*"]
+
+[tool.setuptools.package-data]
+"glassgym" = [
+  "data/weather/Amsterdam/*.csv",
+  "configs/envs/*.yml",
+]

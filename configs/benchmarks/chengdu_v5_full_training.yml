@@ -1,0 +1,44 @@
+schema_version: chengdu-v5-full-training-v1
+dataset_id: chengdu_agri_greenhouse_001
+episode_days: 14
+training_seasons:
+  - {name: 2023_spring, growth_year: 2023, start_day: 59, end_day_exclusive: 179}
+  - {name: 2023_autumn, growth_year: 2023, start_day: 226, end_day_exclusive: 346}
+  - {name: 2024_spring, growth_year: 2024, start_day: 60, end_day_exclusive: 180}
+  - {name: 2024_autumn, growth_year: 2024, start_day: 227, end_day_exclusive: 347}
+validation_growth_year: 2025
+validation_start_days: [59, 73, 87, 101, 115, 129, 143, 157]
+temporal_holdout: {name: 2025_autumn, growth_year: 2025, start_day: 226, episode_days: 120}
+seeds: [0, 1, 2]
+checkpoints: [20480, 102400, 307200, 614400]
+minimum_full_checkpoint: 307200
+plateau_relative_improvement: 0.01
+residual_ppo_scale: 0.25
+# 冻结选择的安全门槛：主动安全干预分数上限。
+# V5 混合环境（无湿帘、受限执行器、跨越春夏的 14 天验证窗口）下，
+# 高温窗口的安全层应急通风不可避免，主动干预分数普遍 >5%，
+# 0.05 会使所有候选都不可行（0 候选通过）。0.20 能区分安全（SAC）与
+# 相对不安全（residual_ppo）的控制器。
+active_safety_limit: 0.20
+algorithms:
+  ppo:
+    learning_rate: 0.0003
+    n_steps: 1024
+    batch_size: 128
+    n_epochs: 8
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    policy_kwargs:
+      net_arch: {pi: [256, 256], vf: [256, 256]}
+  sac:
+    learning_rate: 0.0007
+    buffer_size: 600000
+    learning_starts: 5000
+    batch_size: 256
+    tau: 0.01
+    gamma: 0.99
+    train_freq: 16
+    gradient_steps: 4
+    policy_kwargs:
+      net_arch: {pi: [256, 256], qf: [256, 256]}
