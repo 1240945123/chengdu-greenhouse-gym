@@ -1,0 +1,86 @@
+{
+ "human": {
+  "name": "human",
+  "season_mean_temp": 29.99,
+  "season_max_temp": 64.17,
+  "season_mean_tcan": 31.09,
+  "season_comfort": 19.3,
+  "season_total_reward": -1989.4,
+  "season_mean_effort": 0.0228,
+  "fruit_start_mg": 0.0,
+  "fruit_end_mg": 477.0,
+  "fruit_growth_kg_m2": 0.006,
+  "monthly": [
+   {
+    "month": "4月",
+    "mean_temp": 28.98,
+    "max_temp": 57.85,
+    "comfort": 18.9,
+    "total_reward": -592.7
+   },
+   {
+    "month": "5月",
+    "mean_temp": 30.34,
+    "max_temp": 64.17,
+    "comfort": 18.4,
+    "total_reward": -684.9
+   },
+   {
+    "month": "6月",
+    "mean_temp": 28.71,
+    "max_temp": 59.9,
+    "comfort": 26.7,
+    "total_reward": -398.9
+   },
+   {
+    "month": "7月",
+    "mean_temp": 35.26,
+    "max_temp": 60.05,
+    "comfort": 3.0,
+    "total_reward": -312.9
+   }
+  ]
+ },
+ "rl": {
+  "name": "rl",
+  "season_mean_temp": 23.02,
+  "season_max_temp": 35.05,
+  "season_mean_tcan": 23.37,
+  "season_comfort": 57.2,
+  "season_total_reward": -24.4,
+  "season_mean_effort": 0.0277,
+  "fruit_start_mg": 0.0,
+  "fruit_end_mg": 164932.0,
+  "fruit_growth_kg_m2": 2.036,
+  "monthly": [
+   {
+    "month": "4月",
+    "mean_temp": 20.39,
+    "max_temp": 32.83,
+    "comfort": 60.3,
+    "total_reward": -52.2
+   },
+   {
+    "month": "5月",
+    "mean_temp": 22.88,
+    "max_temp": 35.05,
+    "comfort": 62.9,
+    "total_reward": 45.1
+   },
+   {
+    "month": "6月",
+    "mean_temp": 24.18,
+    "max_temp": 34.23,
+    "comfort": 61.9,
+    "total_reward": 43.6
+   },
+   {
+    "month": "7月",
+    "mean_temp": 27.43,
+    "max_temp": 34.34,
+    "comfort": 20.1,
+    "total_reward": -61.0
+   }
+  ]
+ }
+}
