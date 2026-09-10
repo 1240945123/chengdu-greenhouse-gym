@@ -71,6 +71,13 @@ class GlassGreenhouseEnv(gym.Env):
             self.params[int(k)] = float(v)
         self.params[219] = 0.0005
         self.params[226] = 0.2
+        # 外遮阳网（非遮光幕）透光率。默认 p[89]=p[90]=0.01 是 blackout screen
+        # （催花遮光幕）的 1% 透光，但真实 GH63 外遮阳是降温遮阳网（透光 ~25%），
+        # 与 GlassGreenhouse 能量模型的 `(1 - 0.75*u_bl_scr)` 一致。若沿用 0.01，
+        # 白天一开遮阳 PAR 被挡掉 99%，光合从 ~23 g/m2/天崩到 3-6 g/m2/天。
+        self.params[89] = 0.25   # tauBlScrNir 遮阳网 NIR 透光率
+        self.params[90] = 0.25   # tauBlScrPar 遮阳网 PAR 透光率
+
 
         # 模型
         self.F = define_model(nx=28, nu=10, nd=11, n_params=228, dt=self.dt)
@@ -111,12 +118,15 @@ class GlassGreenhouseEnv(gym.Env):
             x[23] = 30000.0   # cLeaf
             x[24] = 50000.0   # cStem
             x[25] = 5000.0    # cFruit
+            x[26] = 620.0     # tCanSum：定植(4/1)后约30天发育积温(~20°C×30d)
         elif self.crop_start == "seedling":
-            # 定植苗（GH63 实测构建）——仅诊断用途，训练可能数值不稳
-            x[22] = 0.0
-            x[23] = 5842.0
-            x[24] = 7323.0
-            x[25] = 0.0
+            # 定植苗（GH63 实测构建）。tCanSum 从 0 起：发育(果实汇)随积温逐步开启，
+            # 避免成熟发育量在幼苗期就打开果实汇、与叶争夺碳源导致亏碳。
+            x[22] = 2000.0    # cBuf 定植苗储备（约3天幼苗光合量）
+            x[23] = 5842.0    # cLeaf
+            x[24] = 7323.0    # cStem
+            x[25] = 0.0       # cFruit
+            x[26] = 0.0       # tCanSum 从定植起算
         return x
 
     def reset(self, *, seed=None, options=None):
@@ -176,10 +186,32 @@ class GlassGreenhouseEnv(gym.Env):
         ], dtype=np.float32)
 
     def _integrate(self, u: np.ndarray):
-        """物理积分 + reward（u 为 10 维连续控制）。"""
+        """物理积分 + reward（u 为 10 维连续控制）。
+
+        积分失败保护：作物缓冲池在高温/病态动作下可能数值发散
+        （CV_CONV_FAILURE / CV_TOO_MUCH_WORK）。此时保持状态、推进时间、
+        返回 -10 惩罚，让 RL 学会避开导致发散的动作，训练不中断。
+        """
         d = self._weather_at(self._w_idx)
-        r = self.F(x0=ca.DM(self.x), u=ca.DM(u), p=ca.vertcat(ca.DM(d), ca.DM(self.params)))
-        self.x = np.asarray(r["xf"]).flatten()
+        try:
+            r = self.F(x0=ca.DM(self.x), u=ca.DM(u),
+                       p=ca.vertcat(ca.DM(d), ca.DM(self.params)))
+            self.x = np.asarray(r["xf"]).flatten()
+        except Exception:
+            self._w_idx += 1
+            self._step_in_episode += 1
+            self._hour = (self._hour + self.dt / 3600.0) % 24.0
+            terminated = self._step_in_episode >= self._N_steps
+            info = {
+                "integration_failed": True,
+                "temperature": float(self.x[2]),
+                "rh": float(vaporPres2rh(self.x[2], self.x[15])),
+                "temp_penalty": 0.0, "yield_term": 0.0,
+                "effort": 0.0, "fruit_mg": float(self.x[25]),
+                "hour": self._hour,
+            }
+            return self._get_obs(), -10.0, terminated, False, info
+
         self._w_idx += 1
         self._step_in_episode += 1
         self._hour = (self._hour + self.dt / 3600.0) % 24.0
@@ -205,6 +237,7 @@ class GlassGreenhouseEnv(gym.Env):
 
         terminated = self._step_in_episode >= self._N_steps
         info = {
+            "integration_failed": False,
             "temperature": temperature, "rh": rh,
             "temp_penalty": temp_pen, "yield_term": yield_term,
             "effort": effort, "fruit_mg": float(self.x[25]),
