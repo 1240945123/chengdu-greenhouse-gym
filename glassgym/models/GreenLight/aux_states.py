@@ -1130,11 +1130,37 @@ def update(x, u, d, p):
     # positive at an empty buffer, which can drain small measured crops below
     # zero and make the coupled ODE singular. This gate is effectively one for
     # normal buffer levels and smoothly removes allocation close to zero.
+    #
+    # [Chengdu full-season fix] Replaced the vanilla hard logistic threshold
+    # (centred on cBufMin = p[158] ~ 1 g/m2) with a smooth Michaelis-Menten
+    # source-sink gate. The original gate fully blocks organ allocation (and
+    # hence leaf growth) whenever the buffer drops below ~1 g/m2; a young plant
+    # whose DAILY photosynthesis is smaller than that threshold is therefore
+    # permanently starved and its leaves are consumed by maintenance
+    # respiration. The proportional form below lets allocation scale with the
+    # actual buffer level, so growth is source-limited rather than on/off.
+    #
+    # The half-saturation is set to cBufMax/2 (p[157]/2 ~ 10 g/m2) so the
+    # buffer settles at a multi-day carbohydrate reserve instead of a tiny
+    # turnover pool. Without a reserve, a cloudy day's low photosynthesis drops
+    # allocation below the (unchanged) maintenance respiration and the canopy
+    # sheds leaf mass, which then caps LAI well below closure (a vicious cycle:
+    # cloud -> leaf loss -> lower light capture -> even lower photosynthesis).
     positive_buffer = ca.fmax(x[22], 0.0)
-    buffer_available = positive_buffer / (positive_buffer + 1.0)
-    a[205] = (
-        1. / (1. + ca.exp(-5e-3*(x[22] - p[158]))) * buffer_available
-    )
+    a[205] = positive_buffer / (positive_buffer + 0.5 * p[157])
+
+    # Canopy development fraction [0 at transplanting -> 1 at canopy closure].
+    # The vanilla Vanthoor sink rates (rgLeaf/rgStem/rgFruit) are constant per
+    # ground area and valid only for a mature canopy. The smooth source-sink
+    # gate a[205] already scales the TOTAL allocation to the available buffer,
+    # but the fruit sink's absolute rate (rgFruit=0.328) is ~4x the leaf sink
+    # (rgLeaf=0.095), so as soon as the development gate a[204] starts opening
+    # the fruit grabs most of the carbon and starves the still-growing leaf
+    # (canopy never closes). Scaling the fruit sink by the canopy development
+    # fraction makes the reproductive sink grow in proportion to the canopy
+    # (vegetative growth first, then fruiting), which is physiologically
+    # correct and prevents fruit-driven leaf starvation.
+    canopy_frac = ca.fmin(1.0, a[31] / p[141])
 
     # # Carboyhdrate flow from buffer to leaves [mg{CH2O} m^{2} s^{-1}]
     # Equation 25 [2]
@@ -1150,7 +1176,7 @@ def update(x, u, d, p):
     # # Equation 24 [2]
     # addAux(gl, 'mcBufFruit', gl.a[205].*
     #     gl.a[203].*gl.a[202].*gl.a[204].*gl.a[201].*gl.p[154])
-    a[208] = a[205] * a[203] * a[202] * a[204] * a[201] * p[154]
+    a[208] = a[205] * a[203] * a[202] * a[204] * a[201] * p[154] * canopy_frac
 
     # Growth respiration [mg{CH2O} m^{-2] s^{-1}]
     # Equations 43-44 [2]
