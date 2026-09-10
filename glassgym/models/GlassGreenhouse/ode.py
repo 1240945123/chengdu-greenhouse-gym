@@ -88,7 +88,18 @@ def ODE(x: np.ndarray, u: np.ndarray, d: np.ndarray, p: np.ndarray):
     c_canopy = area * 2.0e4
     c_floor = area * 1.5e5 * floor_capacity_scale
     c_cover = area * 1.2e4
-    h_air_canopy = 300.0
+    # Canopy-air convective coupling [W K^-1], whole greenhouse.
+    # Physically derived from GreenLight's canopy convection
+    # (2 * alfaLeafAir * LAI * area = 2 * 5 * 3 * 192) for a closed canopy.
+    # The previous value (300) was ~19x too low: with 37% of solar absorbed
+    # by the canopy but almost no convective dissipation, the canopy
+    # temperature ran to 50-66 degC (vs air ~25 degC), which pushed the CO2
+    # compensation point above stomatal CO2 (net photosynthesis -> 0), shut
+    # off the growth temperature gate, and doubled maintenance respiration.
+    # Raising the coupling keeps the canopy near air temperature; it does NOT
+    # change the air temperature (the canopy->air flux h*(tCan-tAir) equals
+    # solar_canopy - latent at steady state, independent of h).
+    h_air_canopy = 2.0 * 5.0 * 3.0 * area  # 5760 W/K for the 192 m2 house
     h_air_floor = 700.0
     h_air_cover = 900.0
     h_cover_out = 1300.0
