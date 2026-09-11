@@ -49,6 +49,10 @@ class GlassGreenhouseEnv(gym.Env):
         temperature_weight: float = 1.0,
         humidity_weight: float = 1.0,
         effort_weight: float = 0.2,
+        cooling_weight: float = 0.5,
+        cooling_mode: str = "overheat",
+        obs_include_outdoor: bool = True,
+        screen_shade_weight: float = 0.5,
         crop_start: str = "mature",
         disable_supplements: bool = False,
     ) -> None:
@@ -56,9 +60,14 @@ class GlassGreenhouseEnv(gym.Env):
         self.dt = int(dt_seconds)
         self.episode_days = int(episode_days)
         self.action_space = spaces.MultiDiscrete(LEVEL_DIMS)
+        # obs: [t_air, rh, co2, t_can, hour, fruit, tsum, (t_out)]
+        n_obs = 8 if obs_include_outdoor else 7
         self.observation_space = spaces.Box(
-            low=-1e6, high=1e6, shape=(7,), dtype=np.float32
+            low=-1e6, high=1e6, shape=(n_obs,), dtype=np.float32
         )
+        self.obs_include_outdoor = bool(obs_include_outdoor)
+        self.cooling_mode = cooling_mode
+        self.screen_shade_weight = float(screen_shade_weight)
 
         # 参数
         self.params = np.asarray(init_default_params(228), dtype=float)
@@ -78,6 +87,22 @@ class GlassGreenhouseEnv(gym.Env):
         self.params[89] = 0.25   # tauBlScrNir 遮阳网 NIR 透光率
         self.params[90] = 0.25   # tauBlScrPar 遮阳网 PAR 透光率
 
+        # 郫都作物参数标定（对齐 2026 郫都基地实测 3/30、4/27、5/19 茎/叶/果干重，
+        # 密度 2.71 株/m²，误差从 40% 降到 ~6%）。详见 docs/notes/05-作物参数标定.md
+        self.params[68] = 0.85   # tauRfNir 玻璃 NIR 透光率（原塑料棚 0.57）
+        self.params[69] = 0.85   # tauRfPar 玻璃 PAR 透光率
+        self.params[137] = 0.385 * 1.7    # alpha 量子效率（原 0.385 偏低）
+        self.params[152] = 3.47e-7 * 0.5  # cLeafM 叶维持呼吸（原 3%/天偏高）
+        self.params[154] = 0.328 * 1.15   # rgFruit 果实分配率
+        self.params[156] = 0.074 * 2.0    # rgStem 茎分配率（成都番茄茎粗，原值偏低）
+
+        # 修正 solar_gain_scale：glass 标定值 0.910165 是错误拟合「清棚后 59.6°C
+        # 异常值」的结果，导致生长季 4-6 月温室被假加热 ~20°C（仿真 57-64°C vs
+        # 真实 37-42°C）。用生长季（4/1-7/10，人工正常操作）逐日最高温重新标定，
+        # 最优值 ≈0.42（生长季 RMSE 4.4°C，各月峰值差 1-2°C）。7 月清棚后 59.6°C
+        # 属无人温室异常态，不纳入标定。详见 docs/notes/07-物理模型通风不足外推失效.md
+        self.params[209] = 0.42   # solar_gain_scale 修正
+
 
         # 模型
         self.F = define_model(nx=28, nu=10, nd=11, n_params=228, dt=self.dt)
@@ -95,6 +120,8 @@ class GlassGreenhouseEnv(gym.Env):
         self.temperature_weight = float(temperature_weight)
         self.humidity_weight = float(humidity_weight)
         self.effort_weight = float(effort_weight)
+        self.cooling_weight = float(cooling_weight)
+        self._last_t_out = 20.0  # 室外温度缓存（降温奖励用）
 
         self.start_day_index = int(start_day_index)
         self.day_indices = (
@@ -178,12 +205,15 @@ class GlassGreenhouseEnv(gym.Env):
 
     def _get_obs(self) -> np.ndarray:
         t = float(self.x[2]); rh = float(vaporPres2rh(self.x[2], self.x[15]))
-        return np.array([
+        obs = [
             t, rh, float(self.x[0]), float(self.x[4]),  # 温度 湿度 CO2 冠层
             float(self._hour / 24.0),                    # 时间
             float(self.x[25]) / 1e5,                     # 果实生物量(归一化)
             float(self.x[26]) / 1e3,                     # 积温
-        ], dtype=np.float32)
+        ]
+        if self.obs_include_outdoor:
+            obs.append(float(self._last_t_out))           # 室外温度（前瞻控制）
+        return np.array(obs, dtype=np.float32)
 
     def _integrate(self, u: np.ndarray):
         """物理积分 + reward（u 为 10 维连续控制）。
@@ -233,7 +263,24 @@ class GlassGreenhouseEnv(gym.Env):
         effort = self.effort_weight * (
             0.15*u[6] + 0.10*u[7] + 0.05*u[5] + 0.20*u[4] + 0.15*u[1] + 0.05*u[3]
         )
-        reward = yield_term - temp_pen - rh_pen - effort
+        # 降温奖励（两种模式）：
+        # - 'outdoor'（旧版基线）：室内比室外低多少就奖励多少。缺点是温度已经
+        #   低于舒适区时仍持续奖励，诱导 RL 无限降温 + 过度开湿帘，导致湿度 85-100%。
+        # - 'overheat'（优化版）：只在温度超过舒适区上限时才奖励降温，温度已
+        #   舒适（≤ t_hi）即不再奖励，避免"过度降温 + 湿帘加湿"。
+        t_out = float(d[1])
+        self._last_t_out = t_out  # 缓存室外温度，供 obs 前瞻使用
+        if self.cooling_mode == "outdoor":
+            cooling_bonus = self.cooling_weight * max(0.0, t_out - temperature) / 10.0
+        else:  # "overheat"
+            cooling_bonus = self.cooling_weight * max(0.0, temperature - t_hi) / 10.0
+        # 白天顶保温幕挡光惩罚（分温度）：顶保温展开时作物模型按 1-u[2]*(1-p[80])
+        # 挡掉 25% PAR（p[80]=0.75）。但只有「温度已 ≥ 舒适下限」时，白天开保温才
+        # 是纯挡光损失（已经够暖，不需保温）；温度低于舒适下限（如 4 月幼苗期冷）
+        # 时，白天保温收益 > 挡光损失，不应罚。分温度惩罚让 PPO 学会「冷时保温、
+        # 暖时拉开顶保温」。注：四周保温 u[8] 不在作物模型 u[:6] 内，不挡光。
+        screen_pen = self.screen_shade_weight * is_day * u[2] * float(temperature >= t_lo)
+        reward = yield_term - temp_pen - rh_pen - effort + cooling_bonus - screen_pen
 
         terminated = self._step_in_episode >= self._N_steps
         info = {
@@ -241,6 +288,7 @@ class GlassGreenhouseEnv(gym.Env):
             "temperature": temperature, "rh": rh,
             "temp_penalty": temp_pen, "yield_term": yield_term,
             "effort": effort, "fruit_mg": float(self.x[25]),
+            "cooling_bonus": float(cooling_bonus),
             "hour": self._hour,
         }
         return self._get_obs(), float(reward), terminated, False, info

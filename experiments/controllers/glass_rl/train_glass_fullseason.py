@@ -23,7 +23,7 @@ sys.path.insert(0, ".tmp")
 
 OUT_ROOT = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl/glass_ppo_fullseason")
 
-TRAIN_DAYS = [0, 20, 40, 60]
+TRAIN_DAYS = [0, 20, 40, 60, 80]
 EPISODE_DAYS = 40
 
 
