@@ -1150,16 +1150,16 @@ def update(x, u, d, p):
     a[205] = positive_buffer / (positive_buffer + 0.5 * p[157])
 
     # Canopy development fraction [0 at transplanting -> 1 at canopy closure].
-    # The vanilla Vanthoor sink rates (rgLeaf/rgStem/rgFruit) are constant per
-    # ground area and valid only for a mature canopy. The smooth source-sink
-    # gate a[205] already scales the TOTAL allocation to the available buffer,
-    # but the fruit sink's absolute rate (rgFruit=0.328) is ~4x the leaf sink
-    # (rgLeaf=0.095), so as soon as the development gate a[204] starts opening
-    # the fruit grabs most of the carbon and starves the still-growing leaf
-    # (canopy never closes). Scaling the fruit sink by the canopy development
-    # fraction makes the reproductive sink grow in proportion to the canopy
-    # (vegetative growth first, then fruiting), which is physiologically
-    # correct and prevents fruit-driven leaf starvation.
+    # NOTE: NOT applied to allocation anymore. It was introduced to prevent the
+    # fruit sink from starving the leaf during the vegetative phase, but that
+    # starvation was actually caused by the (now-fixed) canopy-overheating and
+    # shading-transmissivity bugs. Pidu calibration (against measured 3/30,
+    # 4/27, 5/19 stem/leaf/fruit dry mass) showed the canopy_frac scaling
+    # over-suppresses the fruit sink: fruit at 5/19 was 62.8 g/plant vs
+    # measured 84.3; removing the scaling (and re-scaling rgStem/rgFruit) cut
+    # the calibration error to ~6%. The fruit sink is already correctly gated
+    # by the development sum a[204] (tCanSum), which stays near zero in the
+    # seedling phase, so the extra canopy scaling is unnecessary.
     canopy_frac = ca.fmin(1.0, a[31] / p[141])
 
     # # Carboyhdrate flow from buffer to leaves [mg{CH2O} m^{2} s^{-1}]
@@ -1176,7 +1176,7 @@ def update(x, u, d, p):
     # # Equation 24 [2]
     # addAux(gl, 'mcBufFruit', gl.a[205].*
     #     gl.a[203].*gl.a[202].*gl.a[204].*gl.a[201].*gl.p[154])
-    a[208] = a[205] * a[203] * a[202] * a[204] * a[201] * p[154] * canopy_frac
+    a[208] = a[205] * a[203] * a[202] * a[204] * a[201] * p[154]
 
     # Growth respiration [mg{CH2O} m^{-2] s^{-1}]
     # Equations 43-44 [2]
