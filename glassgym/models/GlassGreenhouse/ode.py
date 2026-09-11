@@ -3,6 +3,10 @@ import numpy as np
 
 from glassgym.models.GreenLight.crop import crop_derivatives
 
+# 顶保温幕（铝箔内保温幕）的长波辐射遮蔽率：展开时反射室内向上的长波辐射，
+# 减少 cover 向天空的有效辐射散热。真实铝箔保温幕节能率约 40-70%。
+SCREEN_LONGWAVE_SAVING = 0.6
+
 
 def _positive(values, idx, default=1.0):
     if values.shape[0] <= idx:
@@ -134,6 +138,12 @@ def ODE(x: np.ndarray, u: np.ndarray, d: np.ndarray, p: np.ndarray):
         * 5.670374419e-8
         * area
         * ((t_cover + 273.15) ** 4 - (t_sky + 273.15) ** 4)
+        # 保温幕长波反射：铝箔保温幕展开时反射室内向上的长波辐射，
+        # 减少 cover 向天空的有效辐射散热。原模型此因子恒 1（保温幕
+        # 只减 ua 对流、不挡长波），导致夜间保温幕几乎无效（差<0.1°C）。
+        # 顶保温(屋顶面积大)挡 60%；四周保温(侧面)挡 30%。
+        * (1.0 - SCREEN_LONGWAVE_SAVING * u_th_scr)
+        * (1.0 - 0.3 * u_side_scr)
     )
 
     # Pad-and-fan evaporative cooling: needs pump AND fan AND open curtain
