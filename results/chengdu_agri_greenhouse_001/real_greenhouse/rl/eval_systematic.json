@@ -1,0 +1,222 @@
+{
+ "PPO v6": {
+  "comfort_pct": 52.532679738562095,
+  "fruit_kg": 7.283656207942618,
+  "max_temp": 33.5606357271028,
+  "mean_temp": 22.294027382348087,
+  "success_no_overheat_day": 100.0,
+  "success_comfort_day": 57.84313725490197,
+  "daily_t_std": 2.9371921750046686,
+  "intraday_t_std": 1.961754111974343,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 23.258786603279837,
+  "decision_ms_mean": 0.6968392565255312,
+  "decision_ms_p95": 0.9219599999141792,
+  "decide_total_s": 1.7058624999745007,
+  "sample_eff": {
+   "steps_to_80pct": 221184,
+   "final_reward": 29.352553571428576,
+   "total_steps": 606208,
+   "curve_start": 2048,
+   "note": null
+  },
+  "month_comfort": {
+   "4月": 52.1505376344086,
+   "5月": 60.61827956989247,
+   "6月": 55.833333333333336,
+   "7月": 18.75
+  },
+  "train_minutes": 39.6
+ },
+ "PPO v8": {
+  "comfort_pct": 49.91830065359477,
+  "fruit_kg": 8.063339426328737,
+  "max_temp": 32.57578958214142,
+  "mean_temp": 21.834638947023116,
+  "success_no_overheat_day": 100.0,
+  "success_comfort_day": 52.94117647058824,
+  "daily_t_std": 2.8135703048716567,
+  "intraday_t_std": 1.815269572995691,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 24.386399575546022,
+  "decision_ms_mean": 0.6941830473779727,
+  "decision_ms_p95": 0.9078600001885206,
+  "decide_total_s": 1.699360099981277,
+  "sample_eff": {
+   "steps_to_80pct": 184320,
+   "final_reward": 262.916143877551,
+   "total_steps": 606208,
+   "curve_start": 2048,
+   "note": null
+  },
+  "month_comfort": {
+   "4月": 49.32795698924731,
+   "5月": 59.40860215053764,
+   "6月": 52.083333333333336,
+   "7月": 15.833333333333332
+  },
+  "train_minutes": 50.3
+ },
+ "SAC v3": {
+  "comfort_pct": 35.947712418300654,
+  "fruit_kg": 6.583499341336547,
+  "max_temp": 41.86684848959781,
+  "mean_temp": 22.434210533346494,
+  "success_no_overheat_day": 90.19607843137256,
+  "success_comfort_day": 33.33333333333333,
+  "daily_t_std": 3.2373380587955034,
+  "intraday_t_std": 2.7638018607083383,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 24.420862589707138,
+  "decision_ms_mean": 0.4298251225418574,
+  "decision_ms_p95": 0.5278300003283224,
+  "decide_total_s": 1.052211899982467,
+  "sample_eff": {
+   "steps_to_80pct": 122000,
+   "final_reward": 1.037352888888889,
+   "total_steps": 600000,
+   "curve_start": 2000,
+   "note": null
+  },
+  "month_comfort": {
+   "4月": 52.1505376344086,
+   "5月": 43.01075268817204,
+   "6月": 21.11111111111111,
+   "7月": 8.333333333333332
+  },
+  "train_minutes": 139.4
+ },
+ "SAC v4": {
+  "comfort_pct": 36.39705882352941,
+  "fruit_kg": 5.313148471936826,
+  "max_temp": 34.81322849174724,
+  "mean_temp": 22.202631668465134,
+  "success_no_overheat_day": 100.0,
+  "success_comfort_day": 31.372549019607842,
+  "daily_t_std": 3.4815379361605996,
+  "intraday_t_std": 2.1305974174980897,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 21.861293329388744,
+  "decision_ms_mean": 0.43201756534880903,
+  "decision_ms_p95": 0.5291600002692576,
+  "decide_total_s": 1.0575789999738845,
+  "sample_eff": {
+   "steps_to_80pct": 568000,
+   "final_reward": -3.2660224489795917,
+   "total_steps": 600000,
+   "curve_start": 302000,
+   "note": "续训曲线（仅覆盖 302k–600k 段，步数为该段内计数）"
+  },
+  "month_comfort": {
+   "4月": 33.87096774193548,
+   "5月": 46.774193548387096,
+   "6月": 36.25,
+   "7月": 12.5
+  },
+  "train_minutes": 60.6
+ },
+ "残差PPO": {
+  "comfort_pct": 50.93954248366013,
+  "fruit_kg": 7.0760391061990715,
+  "max_temp": 33.17953647197932,
+  "mean_temp": 22.468371341071055,
+  "success_no_overheat_day": 100.0,
+  "success_comfort_day": 50.0,
+  "daily_t_std": 2.9236135051383285,
+  "intraday_t_std": 1.9952137735108542,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 23.62004970229375,
+  "decision_ms_mean": 0.29839575162094917,
+  "decision_ms_p95": 0.37229499998829857,
+  "decide_total_s": 0.7304727999680836,
+  "sample_eff": {
+   "steps_to_80pct": 262144,
+   "final_reward": 137.5813943877551,
+   "total_steps": 606208,
+   "curve_start": 2048,
+   "note": null
+  },
+  "month_comfort": {
+   "4月": 49.73118279569893,
+   "5月": 58.06451612903226,
+   "6月": 55.833333333333336,
+   "7月": 17.916666666666668
+  },
+  "train_minutes": 18.1
+ },
+ "MPC": {
+  "comfort_pct": 67.36111111111111,
+  "fruit_kg": 7.119106230882924,
+  "max_temp": 31.897217654434616,
+  "mean_temp": 23.559775194182116,
+  "success_no_overheat_day": 100.0,
+  "success_comfort_day": 78.43137254901961,
+  "daily_t_std": 2.031064199800797,
+  "intraday_t_std": 2.2592446860080897,
+  "worst_day_comfort": 4.166666666666666,
+  "comfort_day_std": 25.338687120613983,
+  "decision_ms_mean": 57.97852226306997,
+  "decision_ms_p95": 64.34048499986604,
+  "decide_total_s": 141.93142249999528,
+  "sample_eff": {
+   "steps_to_80pct": null,
+   "note": "非学习类（无训练）"
+  },
+  "month_comfort": {
+   "4月": 77.41935483870968,
+   "5月": 77.95698924731182,
+   "6月": 62.22222222222222,
+   "7月": 18.75
+  }
+ },
+ "规则": {
+  "comfort_pct": 48.81535947712418,
+  "fruit_kg": 6.944366567302879,
+  "max_temp": 33.19745930742418,
+  "mean_temp": 23.475892289826447,
+  "success_no_overheat_day": 100.0,
+  "success_comfort_day": 51.9607843137255,
+  "daily_t_std": 2.342774472248221,
+  "intraday_t_std": 2.1387403611762434,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 22.75737457220837,
+  "decision_ms_mean": 0.00266924020708424,
+  "decision_ms_p95": 0.0038999996831989847,
+  "decide_total_s": 0.006534300026942219,
+  "sample_eff": {
+   "steps_to_80pct": null,
+   "note": "非学习类（无训练）"
+  },
+  "month_comfort": {
+   "4月": 56.72043010752689,
+   "5月": 51.747311827956985,
+   "6月": 49.44444444444444,
+   "7月": 13.333333333333334
+  }
+ },
+ "人工": {
+  "comfort_pct": 33.66013071895425,
+  "fruit_kg": 3.056038618657901,
+  "max_temp": 40.84839135812399,
+  "mean_temp": 24.946890259956156,
+  "success_no_overheat_day": 80.3921568627451,
+  "success_comfort_day": 19.607843137254903,
+  "daily_t_std": 3.6459370852020334,
+  "intraday_t_std": 3.156465582100328,
+  "worst_day_comfort": 0.0,
+  "comfort_day_std": 22.677272143675864,
+  "decision_ms_mean": 0.0007601307171094079,
+  "decision_ms_p95": 0.001100000190490391,
+  "decide_total_s": 0.0018607999954838306,
+  "sample_eff": {
+   "steps_to_80pct": null,
+   "note": "非学习类（无训练）"
+  },
+  "month_comfort": {
+   "4月": 39.6505376344086,
+   "5月": 33.19892473118279,
+   "6月": 37.361111111111114,
+   "7月": 5.416666666666667
+  }
+ }
+}
