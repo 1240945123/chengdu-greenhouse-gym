@@ -225,8 +225,8 @@ def main() -> None:
         ax2.set_ylabel("决策延迟 ms", color="#c0392b")
         ax.set_title("① H → 性能 → 延迟（等算力：N×H 恒定）")
         ax.grid(alpha=0.3)
-        ax.legend(fontsize=8, loc="lower right")
-        ax2.legend(fontsize=8, loc="upper left")
+        ax.legend(fontsize=8, loc="lower left")
+        ax2.legend(fontsize=8, loc="center right")
 
         ax = axes[1]
         ax.plot(hs, fruit, "o-", color="#27ae60", lw=2)
@@ -242,6 +242,60 @@ def main() -> None:
         fig.savefig(OUT / "p0_frontier.png", dpi=130)
         plt.close(fig)
         print("已生成 p0_frontier.png")
+
+
+    # ------------------------------------------------ 图5：P0-3 推论 观测增强
+    o_lab, n_lab = "PPO v6（obs8）", "PPO v9（obs16 未来4h天气）"
+    if n_lab in R and "PPO v6（无掩码）" in R:
+        A, B = R["PPO v6（无掩码）"], R[n_lab]
+        fig, axes = plt.subplots(1, 3, figsize=(16, 4.6))
+        ax = axes[0]
+        for lab, col in [("PPO v6（无掩码）", "#95a5a6"), (n_lab, "#27ae60")]:
+            c = C.get(lab, {})
+            if c.get("timestep"):
+                ts = np.array(c["timestep"]) / 1000
+                r = np.array(c["ep_rew_mean"])
+                ax.plot(ts, r, color=col, alpha=0.25, lw=1)
+                ax.plot(ts, smooth(r), color=col, lw=2.2,
+                        label=f"{lab}（末端 {r[-max(3, len(r)//20):].mean():.0f}）")
+        ax.set_xlabel("训练步数 (×1000)")
+        ax.set_ylabel("平均 episode reward")
+        ax.set_title("① 训练收敛：obs 8 → 16（加未来 4h 天气）")
+        ax.legend(fontsize=8)
+        ax.grid(alpha=0.3)
+
+        ax = axes[1]
+        keys = [("comfort_pct", "舒适率 %"), ("fruit_kg", "果实 kg/m²"),
+                ("max_temp", "最高温 °C"), ("comfort_day", "舒适达标日 %")]
+        x = np.arange(len(keys))
+        va = [A[k] for k, _ in keys]
+        vb = [B[k] for k, _ in keys]
+        bar_labels(ax, ax.bar(x - 0.2, va, 0.38, color="#95a5a6", label="obs8"), va)
+        bar_labels(ax, ax.bar(x + 0.2, vb, 0.38, color="#27ae60", label="obs16"), vb)
+        ax.set_xticks(x)
+        ax.set_xticklabels([n for _, n in keys], fontsize=9)
+        ax.set_title("② 最终指标（102 天，唯一差异=观测）")
+        ax.legend(fontsize=8)
+        ax.grid(axis="y", alpha=0.3)
+
+        ax = axes[2]
+        months = ["4月", "5月", "6月", "7月"]
+        x = np.arange(len(months))
+        ax.bar(x - 0.2, [A["month_comfort"][str(m)] for m in range(4, 8)], 0.38,
+               color="#95a5a6", label="obs8")
+        ax.bar(x + 0.2, [B["month_comfort"][str(m)] for m in range(4, 8)], 0.38,
+               color="#27ae60", label="obs16")
+        ax.set_xticks(x)
+        ax.set_xticklabels(months)
+        ax.set_ylabel("舒适率 %")
+        ax.set_title("③ 分月舒适率")
+        ax.legend(fontsize=8)
+        ax.grid(axis="y", alpha=0.3)
+        fig.suptitle("P0-3 推论：把「未来 4h 天气」加入观测（观测信息 ≠ 奖励塑形）", fontsize=13)
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
+        fig.savefig(OUT / "p0_obs_enrichment.png", dpi=130)
+        plt.close(fig)
+        print("已生成 p0_obs_enrichment.png")
 
 
 if __name__ == "__main__":

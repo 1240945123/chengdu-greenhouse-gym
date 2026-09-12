@@ -34,11 +34,12 @@ OUT = RL / "p0_bundle"
 DAYS = 102
 
 
-def make_env():
+def make_env(n_forecast_hours: int = 0):
     """评估环境。不包 gym Wrapper —— Wrapper 不透传 env.x 等自定义属性。"""
     from glass_env import GlassGreenhouseEnv
 
     base = GlassGreenhouseEnv(
+        n_forecast_hours=n_forecast_hours,
         episode_days=DAYS, start_day_index=0, crop_start="seedling",
         disable_supplements=True, cooling_weight=0.5, humidity_weight=2.0,
         cooling_mode="overheat", obs_include_outdoor=True, screen_shade_weight=0.5,
@@ -75,8 +76,8 @@ def metrics(temp, rh, hour, day, rew, f0, env, times) -> dict:
     }
 
 
-def rollout(predict):
-    env = make_env()
+def rollout(predict, n_forecast_hours: int = 0):
+    env = make_env(n_forecast_hours)
     env.reset(seed=0)
     f0 = float(env.x[25])
     temp, rh, hour, day, rew, times, acts = [], [], [], [], [], [], []
@@ -143,6 +144,23 @@ def pred_dagger():
     return lambda e: model.act(e._get_obs(), mean, std)
 
 
+def pred_multiagent():
+    """多智能体 IPPO（3 智能体独立训练，联合推理）。"""
+    import stable_baselines3 as sb3
+
+    from experiments.controllers.glass_rl.multiagent_env import AGENT_ORDER, merge_actions
+
+    models = {a: sb3.PPO.load(str(RL / "multiagent" / a / "model.zip")) for a in AGENT_ORDER}
+
+    def f(e):
+        obs = e._get_obs()
+        acts = {a: np.asarray(models[a].predict(obs, deterministic=True)[0],
+                              dtype=int).reshape(-1) for a in AGENT_ORDER}
+        return merge_actions(acts["cooling"], acts["pad"], acts["insulation"])
+
+    return f
+
+
 def load_curve(path: Path) -> dict:
     import csv as _csv
     if not path.exists():
@@ -179,6 +197,18 @@ def main() -> None:
         print(f"[P0-1] {label}: 舒适 {r['comfort_pct']:.1f}% 果实 {r['fruit_kg']:.2f} "
               f"{r['decision_ms_mean']:.2f} ms", flush=True)
 
+    # ---- P0-3 推论：观测增强（未来 4h 天气）——单变量对照 PPO v6
+    v9p = RL / "ppo_final_v9" / "model"
+    if Path(str(v9p) + ".zip").exists():
+        pred = pred_ppo(v9p)
+        r = rollout(pred, n_forecast_hours=4)
+        r["group"] = "P0-3 观测增强"
+        bundle["results"]["PPO v9（obs16 未来4h天气）"] = r
+        curves["PPO v9（obs16 未来4h天气）"] = load_curve(
+            RL / "ppo_final_v9" / "training_curve.csv")
+        print(f"[P0-3+] PPO v9（预告 obs）: 舒适 {r['comfort_pct']:.1f}% "
+              f"果实 {r['fruit_kg']:.2f} {r['decision_ms_mean']:.2f} ms", flush=True)
+
     # ---- P0-2 off-policy 家族
     for label, cls_name, sub in [
         ("SAC v3", "SAC", "sac_final_v3"),
@@ -195,6 +225,15 @@ def main() -> None:
         bundle["results"][label] = r
         curves[label] = load_curve(RL / sub / "training_curve.csv")
         print(f"[P0-2] {label}: 舒适 {r['comfort_pct']:.1f}% 果实 {r['fruit_kg']:.2f} "
+              f"{r['decision_ms_mean']:.2f} ms", flush=True)
+
+    # ---- B2 多智能体 IPPO（联合推理）
+    ma_path = RL / "multiagent" / "cooling" / "model.zip"
+    if ma_path.exists():
+        r = rollout(pred_multiagent())
+        r["group"] = "B2 多智能体"
+        bundle["results"]["多智能体IPPO"] = r
+        print(f"[B2] 多智能体IPPO: 舒适 {r['comfort_pct']:.1f}% 果实 {r['fruit_kg']:.2f} "
               f"{r['decision_ms_mean']:.2f} ms", flush=True)
 
     # ---- P0-3 DAgger
