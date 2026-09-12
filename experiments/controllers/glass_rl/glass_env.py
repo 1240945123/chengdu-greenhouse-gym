@@ -52,6 +52,7 @@ class GlassGreenhouseEnv(gym.Env):
         cooling_weight: float = 0.5,
         cooling_mode: str = "overheat",
         obs_include_outdoor: bool = True,
+        n_forecast_hours: int = 0,
         screen_shade_weight: float = 0.5,
         comfort_weight: float = 0.0,
         smooth_weight: float = 0.0,
@@ -62,8 +63,10 @@ class GlassGreenhouseEnv(gym.Env):
         self.dt = int(dt_seconds)
         self.episode_days = int(episode_days)
         self.action_space = spaces.MultiDiscrete(LEVEL_DIMS)
-        # obs: [t_air, rh, co2, t_can, hour, fruit, tsum, (t_out)]
-        n_obs = 8 if obs_include_outdoor else 7
+        # obs: [t_air, rh, co2, t_can, hour, fruit, tsum, (t_out),
+        #       (未来 n 小时 × [辐射, 室外温度])]
+        self.n_forecast_hours = int(n_forecast_hours)
+        n_obs = (8 if obs_include_outdoor else 7) + 2 * self.n_forecast_hours
         self.observation_space = spaces.Box(
             low=-1e6, high=1e6, shape=(n_obs,), dtype=np.float32
         )
@@ -224,6 +227,16 @@ class GlassGreenhouseEnv(gym.Env):
         ]
         if self.obs_include_outdoor:
             obs.append(float(self._last_t_out))           # 室外温度（前瞻控制）
+        # 未来 n 小时（含当前时刻）的辐射与室外温度预报。
+        # 动机（见 docs/notes/15 / P0-3 归因诊断）：原 obs 里唯一的室外信息是
+        # _last_t_out（**上一小时**的值，滞后 1h），而模型预测类控制器直接读
+        # 当前/未来天气。蒸馏实验证明仅补齐这一信息赤字，学生舒适率就从
+        # 44.6% 升到 61.1%。RL 侧同理需要同等信息才能做前瞻控制。
+        n = int(getattr(self, "n_forecast_hours", 0))
+        for k in range(n):
+            dk = self._weather_at(self._w_idx + k)
+            obs.append(float(dk[0]) / 1000.0)  # 辐射 W/m2 -> kW/m2
+            obs.append(float(dk[1]))           # 室外温度 °C
         return np.array(obs, dtype=np.float32)
 
     def _integrate(self, u: np.ndarray):

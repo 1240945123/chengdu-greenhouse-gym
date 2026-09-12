@@ -50,7 +50,8 @@ PPO_CONFIG = {
 }
 
 
-def build_env(comfort_weight: float = 0.3, smooth_weight: float = 0.1):
+def build_env(comfort_weight: float = 0.3, smooth_weight: float = 0.1,
+              n_forecast_hours: int = 0):
     from glass_env import GlassGreenhouseEnv
 
     return GlassGreenhouseEnv(
@@ -63,6 +64,7 @@ def build_env(comfort_weight: float = 0.3, smooth_weight: float = 0.1):
         cooling_weight=0.5,
         cooling_mode="overheat",      # 优化1：过热缓解（非室外温差）
         obs_include_outdoor=True,     # 优化3：obs 加入室外温度
+        n_forecast_hours=n_forecast_hours,  # 优化7：未来 n 小时天气（辐射/室外温）
         screen_shade_weight=0.5,      # 优化4：白天顶保温挡光惩罚
         comfort_weight=comfort_weight,  # 优化5：舒适带内正奖励（对齐舒适率指标）
         smooth_weight=smooth_weight,    # 优化6：动作平滑惩罚（抑制档位抖动）
@@ -78,13 +80,15 @@ def main() -> None:
     parser.add_argument("--out", type=str, default=str(OUT_ROOT))
     parser.add_argument("--comfort-weight", type=float, default=0.3)
     parser.add_argument("--smooth-weight", type=float, default=0.1)
+    parser.add_argument("--forecast-hours", type=int, default=0,
+                        help="obs 追加未来 n 小时（含当前）的辐射与室外温度")
     args = parser.parse_args()
     out_root = Path(args.out)
 
     from stable_baselines3 import PPO
     from train_ppo_final import build_curve_callback
 
-    env = build_env(args.comfort_weight, args.smooth_weight)
+    env = build_env(args.comfort_weight, args.smooth_weight, args.forecast_hours)
     out_root.mkdir(parents=True, exist_ok=True)
     callback = build_curve_callback(out_root)
 
@@ -97,7 +101,7 @@ def main() -> None:
 
     print(f"\n===== PPO 优化版训练：{args.timesteps} 步 =====", flush=True)
     print("超参数:", json.dumps(PPO_CONFIG, ensure_ascii=False), flush=True)
-    print(f"优化: overheat + humidity2.0 + obs8 + screen0.5 + comfort{args.comfort_weight} + smooth{args.smooth_weight}", flush=True)
+    print(f"优化: overheat + humidity2.0 + obs{8 + 2*args.forecast_hours}（含未来{args.forecast_hours}h天气） + screen0.5 + comfort{args.comfort_weight} + smooth{args.smooth_weight}", flush=True)
     t0 = time.time()
     done = 0
     while done < args.timesteps:
@@ -122,6 +126,7 @@ def main() -> None:
         "effort_weight": 0.2, "cooling_weight": 0.5,
         "cooling_mode": "overheat", "obs_include_outdoor": True, "obs_dim": 8,
         "comfort_weight": args.comfort_weight, "smooth_weight": args.smooth_weight,
+        "n_forecast_hours": args.forecast_hours, "obs_dim": 8 + 2*args.forecast_hours,
         "hyperparameters": PPO_CONFIG,
     }
     (out_root / "train_meta.json").write_text(
