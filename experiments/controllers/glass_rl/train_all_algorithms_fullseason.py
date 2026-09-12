@@ -62,9 +62,12 @@ def build_env(env_kind: str):
         day_indices=TRAIN_DAYS,
         yield_weight=1.0,
         temperature_weight=1.0,
-        humidity_weight=1.0,
+        humidity_weight=2.0,          # 统一为标定后协议（原 1.0）
         effort_weight=0.2,
         cooling_weight=0.5,
+        cooling_mode="overheat",
+        obs_include_outdoor=True,
+        screen_shade_weight=0.5,
         crop_start="seedling",
         disable_supplements=True,
     )
