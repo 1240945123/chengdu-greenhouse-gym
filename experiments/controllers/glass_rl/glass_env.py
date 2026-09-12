@@ -53,6 +53,8 @@ class GlassGreenhouseEnv(gym.Env):
         cooling_mode: str = "overheat",
         obs_include_outdoor: bool = True,
         screen_shade_weight: float = 0.5,
+        comfort_weight: float = 0.0,
+        smooth_weight: float = 0.0,
         crop_start: str = "mature",
         disable_supplements: bool = False,
     ) -> None:
@@ -68,6 +70,14 @@ class GlassGreenhouseEnv(gym.Env):
         self.obs_include_outdoor = bool(obs_include_outdoor)
         self.cooling_mode = cooling_mode
         self.screen_shade_weight = float(screen_shade_weight)
+        # 舒适带内正奖励权重：温湿联合达标即 +comfort_weight/步。
+        # 原 reward 只有"越界惩罚"（dist），进入舒适带后无梯度引导"居中最优"，
+        # 导致策略在带边缘反复穿越。加正奖励直接对齐"舒适率"评价指标。
+        self.comfort_weight = float(comfort_weight)
+        # 动作平滑惩罚权重：惩罚相邻时刻执行器档位的跳变（chattering）。
+        # 主要针对 SAC 连续动作投影到离散档位后的高频抖动（湿度在干/湿间摆振）。
+        self.smooth_weight = float(smooth_weight)
+        self._prev_u = None
 
         # 参数
         self.params = np.asarray(init_default_params(228), dtype=float)
@@ -161,6 +171,7 @@ class GlassGreenhouseEnv(gym.Env):
         self.x = self._reset_crop()
         self._step_in_episode = 0
         self._prev_fruit = float(self.x[25])
+        self._prev_u = None
         # 从天气序列起点开始（多场景时随机选）
         if self.day_indices is not None:
             self._day_index = int(np.random.choice(self.day_indices))
@@ -231,6 +242,7 @@ class GlassGreenhouseEnv(gym.Env):
             self._w_idx += 1
             self._step_in_episode += 1
             self._hour = (self._hour + self.dt / 3600.0) % 24.0
+            self._prev_u = np.asarray(u, dtype=float).copy()
             terminated = self._step_in_episode >= self._N_steps
             info = {
                 "integration_failed": True,
@@ -280,7 +292,21 @@ class GlassGreenhouseEnv(gym.Env):
         # 时，白天保温收益 > 挡光损失，不应罚。分温度惩罚让 PPO 学会「冷时保温、
         # 暖时拉开顶保温」。注：四周保温 u[8] 不在作物模型 u[:6] 内，不挡光。
         screen_pen = self.screen_shade_weight * is_day * u[2] * float(temperature >= t_lo)
-        reward = yield_term - temp_pen - rh_pen - effort + cooling_bonus - screen_pen
+        # 舒适带内正奖励：温湿联合达标即给正奖励（对齐"舒适率"评价指标），
+        # 让策略有"停留在带内"的正向梯度，而非仅在越界时被罚。
+        comfort_bonus = self.comfort_weight * float(
+            (t_lo <= temperature <= t_hi) and (60.0 <= rh <= 85.0)
+        )
+        # 动作平滑惩罚：抑制相邻时刻档位跳变（chattering）。仅统计可调执行器
+        # 通道（1-9），CO2 通道 0 不参与。
+        u_now = np.asarray(u, dtype=float)
+        if self.smooth_weight > 0.0 and self._prev_u is not None:
+            smooth_pen = self.smooth_weight * float(np.mean(np.abs(u_now[1:] - self._prev_u[1:])))
+        else:
+            smooth_pen = 0.0
+        self._prev_u = u_now.copy()
+        reward = (yield_term - temp_pen - rh_pen - effort
+                  + cooling_bonus - screen_pen + comfort_bonus - smooth_pen)
 
         terminated = self._step_in_episode >= self._N_steps
         info = {
@@ -289,6 +315,7 @@ class GlassGreenhouseEnv(gym.Env):
             "temp_penalty": temp_pen, "yield_term": yield_term,
             "effort": effort, "fruit_mg": float(self.x[25]),
             "cooling_bonus": float(cooling_bonus),
+            "comfort_bonus": float(comfort_bonus),
             "hour": self._hour,
         }
         return self._get_obs(), float(reward), terminated, False, info

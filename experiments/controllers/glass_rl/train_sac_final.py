@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, ".")
 sys.path.insert(0, "experiments/controllers/glass_rl")
 
-OUT_ROOT = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl/sac_final_v3")
+OUT_ROOT = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl/sac_final_v4")
 
 TRAIN_DAYS = [0, 20, 40, 60, 80]
 EPISODE_DAYS = 40
@@ -55,6 +55,8 @@ def build_env():
         cooling_mode="overheat",
         obs_include_outdoor=True,
         screen_shade_weight=0.5,
+        comfort_weight=0.3,
+        smooth_weight=0.1,
         crop_start="seedling",
         disable_supplements=True,
     )
@@ -100,52 +102,62 @@ def build_curve_callback(out_dir: Path):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timesteps", type=int, default=600_000)
+    parser.add_argument("--out", type=str, default=str(OUT_ROOT))
+    parser.add_argument("--resume", type=str, default=None, help="从 checkpoint 续训（路径不含 .zip）")
+    parser.add_argument("--resume-steps", type=int, default=0, help="该 checkpoint 已完成的步数")
     args = parser.parse_args()
+    out_root = Path(args.out)
 
     from stable_baselines3 import SAC
 
     env = build_env()
-    OUT_ROOT.mkdir(parents=True, exist_ok=True)
-    callback = build_curve_callback(OUT_ROOT)
+    out_root.mkdir(parents=True, exist_ok=True)
+    callback = build_curve_callback(out_root)
 
-    model = SAC(
-        "MlpPolicy", env,
-        seed=0, verbose=1,
-        tensorboard_log=str(OUT_ROOT / "tb_log"),
-        **SAC_CONFIG,
-    )
+    if args.resume:
+        model = SAC.load(args.resume, env=env, tensorboard_log=str(out_root / "tb_log"))
+        print(f"从 {args.resume} 续训（已完成 {args.resume_steps} 步）", flush=True)
+    else:
+        model = SAC(
+            "MlpPolicy", env,
+            seed=0, verbose=1,
+            tensorboard_log=str(out_root / "tb_log"),
+            **SAC_CONFIG,
+        )
 
     print(f"\n===== SAC 最终训练：{args.timesteps} 步（修复后环境）=====", flush=True)
     print("超参数:", json.dumps(SAC_CONFIG, ensure_ascii=False), flush=True)
     t0 = time.time()
-    done = 0
+    done = int(args.resume_steps)
     while done < args.timesteps:
         step = min(CHECKPOINT_INTERVAL, args.timesteps - done)
         print(f"\n=== 训练段 {done} -> {done + step} ===", flush=True)
         model.learn(total_timesteps=step, reset_num_timesteps=(done == 0),
                     progress_bar=False, callback=callback)
         done += step
-        ckpt = OUT_ROOT / f"checkpoint_{done:07d}"
+        ckpt = out_root / f"checkpoint_{done:07d}"
         model.save(ckpt)
         print(f"checkpoint 已保存: {ckpt} ({time.time()-t0:.0f}s)", flush=True)
 
-    model.save(OUT_ROOT / "model")
+    model.save(out_root / "model")
     elapsed = time.time() - t0
     meta = {
         "algorithm": "sac", "sb3_class": "SAC", "env_kind": "cont",
         "timesteps": args.timesteps, "seed": 0,
+        "resumed_from": args.resume, "resume_steps": args.resume_steps,
         "elapsed_seconds": round(elapsed, 1),
         "train_days": TRAIN_DAYS, "episode_days": EPISODE_DAYS,
         "crop_start": "seedling", "disable_supplements": True,
         "yield_weight": 1.0, "temperature_weight": 1.0, "humidity_weight": 2.0,
         "effort_weight": 0.2, "cooling_weight": 0.5,
         "cooling_mode": "overheat", "obs_include_outdoor": True, "obs_dim": 8,
+        "comfort_weight": 0.3, "smooth_weight": 0.1,
         "hyperparameters": SAC_CONFIG,
     }
-    (OUT_ROOT / "train_meta.json").write_text(
+    (out_root / "train_meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nSAC 训练完成：{args.timesteps} 步, 用时 {elapsed:.0f}s", flush=True)
-    print(f"模型: {OUT_ROOT / 'model'}", flush=True)
+    print(f"模型: {out_root / 'model'}", flush=True)
 
 
 if __name__ == "__main__":

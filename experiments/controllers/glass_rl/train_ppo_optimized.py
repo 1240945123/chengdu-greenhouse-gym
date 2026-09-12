@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, ".")
 sys.path.insert(0, "experiments/controllers/glass_rl")
 
-OUT_ROOT = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl/ppo_final_v6")
+OUT_ROOT = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl/ppo_final_v7")
 
 TRAIN_DAYS = [0, 20, 40, 60, 80]
 EPISODE_DAYS = 40
@@ -50,7 +50,7 @@ PPO_CONFIG = {
 }
 
 
-def build_env():
+def build_env(comfort_weight: float = 0.3, smooth_weight: float = 0.1):
     from glass_env import GlassGreenhouseEnv
 
     return GlassGreenhouseEnv(
@@ -64,6 +64,8 @@ def build_env():
         cooling_mode="overheat",      # 优化1：过热缓解（非室外温差）
         obs_include_outdoor=True,     # 优化3：obs 加入室外温度
         screen_shade_weight=0.5,      # 优化4：白天顶保温挡光惩罚
+        comfort_weight=comfort_weight,  # 优化5：舒适带内正奖励（对齐舒适率指标）
+        smooth_weight=smooth_weight,    # 优化6：动作平滑惩罚（抑制档位抖动）
         crop_start="seedling",
         disable_supplements=True,
     )
@@ -73,25 +75,29 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timesteps", type=int, default=600_000)
     parser.add_argument("--checkpoint-interval", type=int, default=CHECKPOINT_INTERVAL)
+    parser.add_argument("--out", type=str, default=str(OUT_ROOT))
+    parser.add_argument("--comfort-weight", type=float, default=0.3)
+    parser.add_argument("--smooth-weight", type=float, default=0.1)
     args = parser.parse_args()
+    out_root = Path(args.out)
 
     from stable_baselines3 import PPO
     from train_ppo_final import build_curve_callback
 
-    env = build_env()
-    OUT_ROOT.mkdir(parents=True, exist_ok=True)
-    callback = build_curve_callback(OUT_ROOT)
+    env = build_env(args.comfort_weight, args.smooth_weight)
+    out_root.mkdir(parents=True, exist_ok=True)
+    callback = build_curve_callback(out_root)
 
     model = PPO(
         "MlpPolicy", env,
         seed=0, verbose=1,
-        tensorboard_log=str(OUT_ROOT / "tb_log"),
+        tensorboard_log=str(out_root / "tb_log"),
         **PPO_CONFIG,
     )
 
     print(f"\n===== PPO 优化版训练：{args.timesteps} 步 =====", flush=True)
     print("超参数:", json.dumps(PPO_CONFIG, ensure_ascii=False), flush=True)
-    print("优化: cooling_mode=overheat, humidity_weight=2.0, obs=8维(含室外温度)", flush=True)
+    print(f"优化: overheat + humidity2.0 + obs8 + screen0.5 + comfort{args.comfort_weight} + smooth{args.smooth_weight}", flush=True)
     t0 = time.time()
     done = 0
     while done < args.timesteps:
@@ -100,11 +106,11 @@ def main() -> None:
         model.learn(total_timesteps=step, reset_num_timesteps=(done == 0),
                     progress_bar=False, callback=callback)
         done += step
-        ckpt = OUT_ROOT / f"checkpoint_{done:07d}"
+        ckpt = out_root / f"checkpoint_{done:07d}"
         model.save(ckpt)
         print(f"checkpoint 已保存: {ckpt} ({time.time()-t0:.0f}s)", flush=True)
 
-    model.save(OUT_ROOT / "model")
+    model.save(out_root / "model")
     elapsed = time.time() - t0
     meta = {
         "algorithm": "ppo_optimized", "sb3_class": "PPO", "env_kind": "multi",
@@ -115,12 +121,13 @@ def main() -> None:
         "yield_weight": 1.0, "temperature_weight": 1.0, "humidity_weight": 2.0,
         "effort_weight": 0.2, "cooling_weight": 0.5,
         "cooling_mode": "overheat", "obs_include_outdoor": True, "obs_dim": 8,
+        "comfort_weight": args.comfort_weight, "smooth_weight": args.smooth_weight,
         "hyperparameters": PPO_CONFIG,
     }
-    (OUT_ROOT / "train_meta.json").write_text(
+    (out_root / "train_meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nPPO 优化版训练完成：{args.timesteps} 步, 用时 {elapsed:.0f}s", flush=True)
-    print(f"模型: {OUT_ROOT / 'model'}", flush=True)
+    print(f"模型: {out_root / 'model'}", flush=True)
 
 
 if __name__ == "__main__":
