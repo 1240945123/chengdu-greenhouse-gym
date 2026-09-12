@@ -61,9 +61,10 @@ class SingleAgentView(gym.Env):
         super().__init__()
         self.agent_name = agent_name
         self.fixed_policies = fixed_policies
+        env_cfg = dict(crop_start="seedling", disable_supplements=True)
+        env_cfg.update(env_kwargs)   # 允许调用方覆盖（统一协议：humidity 2.0 / obs8 等）
         self.env = GlassGreenhouseEnv(
-            episode_days=episode_days, day_indices=day_indices,
-            crop_start="early_fruiting", disable_supplements=True, **env_kwargs)
+            episode_days=episode_days, day_indices=day_indices, **env_cfg)
         self.action_space = spaces.MultiDiscrete(AGENTS[agent_name]["dims"])
         self.observation_space = self.env.observation_space
 

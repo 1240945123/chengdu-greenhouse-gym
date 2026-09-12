@@ -26,8 +26,13 @@ from experiments.controllers.glass_rl.multiagent_env import (
     AGENTS, AGENT_ORDER, SingleAgentView)
 
 OUT_ROOT = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl/multiagent")
-TRAIN_DAYS = [30, 45, 60, 70]
-EPISODE_DAYS = 30
+TRAIN_DAYS = [0, 20, 40, 60, 80]
+EPISODE_DAYS = 40
+
+# 统一协议（与单智能体算法一致）：overheat + humidity 2.0 + obs8 + screen_shade 0.5
+ENV_KW = dict(yield_weight=1.0, temperature_weight=1.0, humidity_weight=2.0,
+              effort_weight=0.2, cooling_weight=0.5, cooling_mode="overheat",
+              obs_include_outdoor=True, screen_shade_weight=0.5)
 
 
 def zero_policy(agent_name: str):
@@ -50,7 +55,7 @@ def train(iterations: int, steps_per_iter: int) -> None:
 
             env = SingleAgentView(
                 agent_name, fixed, episode_days=EPISODE_DAYS,
-                day_indices=TRAIN_DAYS, yield_weight=1.0)
+                day_indices=TRAIN_DAYS, **ENV_KW)
 
             # 每轮从头训，或载入上一轮的模型继续
             out_dir = OUT_ROOT / agent_name
@@ -81,6 +86,7 @@ def train(iterations: int, steps_per_iter: int) -> None:
         "iterations": iterations, "steps_per_iter": steps_per_iter,
         "total_steps_per_agent": iterations * steps_per_iter,
         "train_days": TRAIN_DAYS, "episode_days": EPISODE_DAYS,
+        "crop_start": "seedling", "env_kw": ENV_KW,
     }
     (OUT_ROOT / "train_meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

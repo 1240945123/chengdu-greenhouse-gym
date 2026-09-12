@@ -39,6 +39,15 @@ def comfort(t, rh, h):
 
 def build_act(spec):
     kind = spec["kind"]
+    if kind == "alg":
+        # 统一算法矩阵（algorithms_fullseason）：复用 benchmark_all 的加载器
+        from experiments.controllers.glass_rl.benchmark_all import load_rl_model, rl_to_levels
+        model, k = load_rl_model(spec["alg_name"])
+        return lambda e: rl_to_levels(model.predict(e._get_obs(), deterministic=True)[0], k)
+    if kind == "multiagent":
+        from experiments.controllers.glass_rl.benchmark_all import load_multiagent
+        joint = load_multiagent()
+        return lambda e: joint(e._get_obs())
     if kind == "ppo":
         from stable_baselines3 import PPO
         m = PPO.load(str(spec["path"]))
@@ -136,21 +145,37 @@ def sample_efficiency(csv: Path, label: str) -> dict:
             "total_steps": int(ts[-1]), "curve_start": int(ts[0]), "note": note}
 
 
-SPECS = [
-    {"name": "PPO v6", "kind": "ppo", "path": RL / "ppo_final_v6/model", "csv": RL / "ppo_final_v6/training_curve.csv",
-     "train_meta": RL / "ppo_final_v6/train_meta.json"},
-    {"name": "PPO v8", "kind": "ppo", "path": RL / "ppo_final_v8/model", "csv": RL / "ppo_final_v8/training_curve.csv",
-     "train_meta": RL / "ppo_final_v8/train_meta.json"},
-    {"name": "SAC v3", "kind": "sac", "path": RL / "sac_final_v3/model", "csv": RL / "sac_final_v3/training_curve.csv",
-     "train_meta": RL / "sac_final_v3/train_meta.json"},
-    {"name": "SAC v4", "kind": "sac", "path": RL / "sac_final_v4/model", "csv": RL / "sac_final_v4/training_curve.csv",
-     "train_meta": RL / "sac_final_v4/train_meta.json"},
-    {"name": "残差PPO", "kind": "residual", "path": RL / "residual_ppo/model", "csv": RL / "residual_ppo/training_curve.csv",
-     "train_meta": RL / "residual_ppo/train_meta.json"},
-    {"name": "MPC", "kind": "mpc"},
-    {"name": "规则", "kind": "rule"},
-    {"name": "人工", "kind": "human"},
-]
+ALG_ORDER = ["a2c", "dqn", "sac", "ddpg", "td3", "trpo", "recurrent_ppo"]
+
+
+def build_specs():
+    specs = [
+        {"name": "PPO v6", "kind": "ppo", "path": RL / "ppo_final_v6/model",
+         "csv": RL / "ppo_final_v6/training_curve.csv", "train_meta": RL / "ppo_final_v6/train_meta.json"},
+        {"name": "PPO v8", "kind": "ppo", "path": RL / "ppo_final_v8/model",
+         "csv": RL / "ppo_final_v8/training_curve.csv", "train_meta": RL / "ppo_final_v8/train_meta.json"},
+        {"name": "SAC v3", "kind": "sac", "path": RL / "sac_final_v3/model",
+         "csv": RL / "sac_final_v3/training_curve.csv", "train_meta": RL / "sac_final_v3/train_meta.json"},
+        {"name": "SAC v4", "kind": "sac", "path": RL / "sac_final_v4/model",
+         "csv": RL / "sac_final_v4/training_curve.csv", "train_meta": RL / "sac_final_v4/train_meta.json"},
+        {"name": "残差PPO", "kind": "residual", "path": RL / "residual_ppo/model",
+         "csv": RL / "residual_ppo/training_curve.csv", "train_meta": RL / "residual_ppo/train_meta.json"},
+    ]
+    # 统一算法矩阵（训练完成后自动纳入）
+    af = RL / "algorithms_fullseason"
+    for a in ALG_ORDER:
+        if (af / a / "model.zip").exists():
+            specs.append({"name": f"矩阵·{a}", "kind": "alg", "alg_name": a,
+                          "csv": af / a / "training_curve.csv",
+                          "train_meta": af / a / "train_meta.json"})
+    if (RL / "multiagent" / "train_meta.json").exists():
+        specs.append({"name": "多智能体", "kind": "multiagent"})
+    specs += [{"name": "MPC", "kind": "mpc"}, {"name": "规则", "kind": "rule"},
+              {"name": "人工", "kind": "human"}]
+    return specs
+
+
+SPECS = build_specs()
 
 
 def main():
