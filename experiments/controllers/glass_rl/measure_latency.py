@@ -26,14 +26,14 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "experiments/controllers/glass_rl")
 
 from experiments.controllers.glass_rl.eval_algorithm_matrix import (  # noqa: E402
-    BUILDERS, RL, NO_WARMUP)
+    BUILDERS, RL, NO_WARMUP, FORECAST)
 
 OUT = RL / "algorithm_matrix"
 
 
-def measure(pred, steps: int, warmup: int = 5) -> dict:
+def measure(pred, steps: int, warmup: int = 5, n_forecast_hours: int = 0) -> dict:
     from experiments.controllers.glass_rl.eval_algorithm_matrix import make_env
-    env = make_env(0)
+    env = make_env(n_forecast_hours)
     env.reset(seed=0)
     for _ in range(warmup):
         pred(env)
@@ -66,6 +66,10 @@ def main() -> None:
 
     OUT.mkdir(parents=True, exist_ok=True)
     res: dict = {}
+    out = OUT / args.out
+    if out.exists():                       # 增量：保留既有策略计时，只覆盖本次
+        res = json.loads(out.read_text(encoding="utf-8"))
+        print(f"增量模式：已载入 {len(res)} 条既有计时", flush=True)
     for name in args.strategies:
         if name not in BUILDERS:
             print(f"[skip] 未知 {name}", flush=True)
@@ -75,7 +79,8 @@ def main() -> None:
         except Exception as e:
             print(f"[skip] {name}: {type(e).__name__}: {str(e)[:100]}", flush=True)
             continue
-        r = measure(pred, args.steps, warmup=0 if name in NO_WARMUP else 5)
+        r = measure(pred, args.steps, warmup=0 if name in NO_WARMUP else 5,
+                    n_forecast_hours=FORECAST.get(name, 0))
         res[name] = r
         print(f"[{name:14s}] median {r['median_ms']:9.4f} ms   "
               f"mean {r['mean_ms']:9.4f}   p95 {r['p95_ms']:9.4f}", flush=True)

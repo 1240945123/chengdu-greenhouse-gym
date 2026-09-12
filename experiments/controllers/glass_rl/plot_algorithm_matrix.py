@@ -65,9 +65,22 @@ def pareto(points):
     return keep
 
 
+def load_latency() -> dict:
+    """空闲状态实测延迟（median ms）；缺失则回退到评估时的 decision_ms_mean。"""
+    p = OUT / "latency_idle.json"
+    if not p.exists():
+        return {}
+    return {k: v["median_ms"] for k, v in
+            json.loads(p.read_text(encoding="utf-8")).items()}
+
+
 def main() -> None:
     d = json.loads((OUT / "algorithm_matrix.json").read_text(encoding="utf-8"))
+    lat = load_latency()
     keys = [k for k in d if k in FAMILY]
+
+    def ms_of(k):
+        return lat.get(k, d[k]["decision_ms_mean"])
 
     OUT.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(2, 2, figsize=(16, 11))
@@ -108,14 +121,14 @@ def main() -> None:
     # ---------- ③ 舒适 × 决策延迟 ----------
     ax = axes[1, 0]
     for k in keys:
-        ms = max(d[k]["decision_ms_mean"], 1e-3)
+        ms = max(ms_of(k), 1e-3)
         ax.scatter(ms, d[k]["comfort_pct"], color=FAMILY[k][1], s=70, zorder=3)
         ax.annotate(LABEL.get(k, k), (ms, d[k]["comfort_pct"]), fontsize=8,
                     xytext=(4, 4), textcoords="offset points")
     ax.set_xscale("log")
-    ax.set_xlabel("单次决策耗时 ms（对数轴；并发下测得，待空闲重测）")
+    ax.set_xlabel("单次决策耗时 ms（对数轴；空闲实测中位数）")
     ax.set_ylabel("舒适率 %")
-    ax.set_title("③ 成本-性能前沿（RL ≈ MPC 的 1/50~1/80）", fontweight="bold")
+    ax.set_title("③ 成本-性能前沿（PPO ≈ MPC 的 1/88）", fontweight="bold")
     ax.grid(alpha=0.3, which="both")
 
     # ---------- ④ 分月舒适率热力图 ----------
