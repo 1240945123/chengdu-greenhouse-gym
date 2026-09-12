@@ -34,6 +34,7 @@ FAMILY = {
     "lookahead_h1": ("模型预测", "#d62728"),
     "trpo": ("on-policy 离散", "#2ca02c"), "ppo_v9": ("on-policy 离散", "#2ca02c"),
     "ppo_v6": ("on-policy 离散", "#2ca02c"), "a2c": ("on-policy 离散", "#2ca02c"),
+    "ppo": ("on-policy 离散", "#2ca02c"),
     "recurrent_ppo": ("on-policy 离散", "#2ca02c"),
     "sac": ("off-policy 连续", "#9467bd"), "dqn": ("off-policy 离散", "#8c564b"),
     "ddpg": ("off-policy 连续", "#9467bd"), "td3": ("off-policy 连续", "#9467bd"),
@@ -44,7 +45,7 @@ FAMILY = {
 LABEL = {
     "human": "人工", "baseline": "Baseline", "rule": "规则", "pid": "PID",
     "mpc": "MPC(原)", "lookahead_h1": "前瞻H=1", "trpo": "TRPO", "ppo_v9": "PPO v9(obs16)",
-    "ppo_v6": "PPO v6(obs8)", "a2c": "A2C", "recurrent_ppo": "RecurrentPPO",
+    "ppo_v6": "PPO v6(obs8)", "ppo": "PPO(600k同协议)", "a2c": "A2C", "recurrent_ppo": "RecurrentPPO",
     "sac": "SAC", "dqn": "DQN", "ddpg": "DDPG", "td3": "TD3", "tqc": "TQC",
     "crossq": "CrossQ", "masked_ppo": "MaskablePPO", "multiagent": "多智能体IPPO",
     "dagger_v1": "DAgger v1",
@@ -83,7 +84,7 @@ def main() -> None:
     ax.axvline(d["human"]["comfort_pct"], color="#7f7f7f", ls="--", lw=1,
                label=f"人工 {d['human']['comfort_pct']:.1f}%")
     ax.set_xlabel("舒适率 %（102 天）")
-    ax.set_title("① 舒适率排行（同协议 20 策略）", fontweight="bold")
+    ax.set_title(f"① 舒适率排行（同协议 {len(keys)} 策略）", fontweight="bold")
     ax.set_xlim(0, 80)
     ax.legend(loc="lower right", fontsize=9)
     ax.grid(axis="x", alpha=0.3)
@@ -119,7 +120,7 @@ def main() -> None:
 
     # ---------- ④ 分月舒适率热力图 ----------
     ax = axes[1, 1]
-    show = ["human", "rule", "mpc", "lookahead_h1", "trpo", "ppo_v9", "crossq",
+    show = ["human", "rule", "mpc", "lookahead_h1", "trpo", "ppo", "ppo_v9", "crossq",
             "multiagent", "tqc", "sac", "dqn"]
     show = [k for k in show if k in d]
     M = np.array([[d[k]["month_comfort"][m] for m in ("4", "5", "6", "7")]
