@@ -92,13 +92,18 @@ def main() -> None:
     ap.add_argument("--budget", type=int, default=192, help="每轮推演预算 N≈budget/H")
     ap.add_argument("--days", type=int, default=102)
     ap.add_argument("--add-mpc", action="store_true", help="额外跑原 GlassMPC 作参照点")
+    ap.add_argument("--out", type=str, default=None, help="输出目录（默认 horizon_frontier）")
+    ap.add_argument("--tag", type=str, default=None,
+                    help="写入 JSON 的配置标签，如 '等算力(默认)' / '等候选数N=192'")
     args = ap.parse_args()
 
-    OUT.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(args.out) if args.out else OUT
+    out_dir.mkdir(parents=True, exist_ok=True)
     from experiments.controllers.glass_rl.horizon_search import GlassHorizonSearch
 
     results: dict = {"config": {"iters": args.iters, "compute_budget": args.budget,
-                                "days": args.days, "objective": "env reward（与 RL 同源）"},
+                                "days": args.days, "tag": args.tag,
+                                "objective": "env reward（与 RL 同源）"},
                      "horizons": {}}
 
     for H in args.horizons:
@@ -115,7 +120,7 @@ def main() -> None:
               f"最高温 {res['max_temp']:.1f} | 无过热日 {res['no_overheat_day']:.1f}% | "
               f"{res['decision_ms_mean']:.1f} ms/决策 | 推演 {res['rollouts_per_decision']:.0f} 步 | "
               f"总耗时 {res['wall_seconds']:.0f}s", flush=True)
-        (OUT / "horizon_frontier.json").write_text(
+        (out_dir / "horizon_frontier.json").write_text(
             json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
 
     if args.add_mpc:
@@ -131,9 +136,9 @@ def main() -> None:
         print(f"  舒适率 {res['comfort_pct']:.1f}% | 果实 {res['fruit_kg']:.2f} | "
               f"{res['decision_ms_mean']:.1f} ms/决策", flush=True)
 
-    (OUT / "horizon_frontier.json").write_text(
+    (out_dir / "horizon_frontier.json").write_text(
         json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n已写入 {OUT / 'horizon_frontier.json'}", flush=True)
+    print(f"\n已写入 {out_dir / 'horizon_frontier.json'}", flush=True)
 
 
 if __name__ == "__main__":

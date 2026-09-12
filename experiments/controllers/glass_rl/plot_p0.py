@@ -201,7 +201,15 @@ def main() -> None:
         fruit = [H[str(h)]["fruit_kg"] for h in hs]
         fig, axes = plt.subplots(1, 2, figsize=(14, 4.8))
         ax = axes[0]
-        ax.plot(hs, comf, "o-", color="#2c6fbb", lw=2, label="舒适率 %")
+        ax.plot(hs, comf, "o-", color="#2c6fbb", lw=2, label="等算力（N≈192/H）")
+        # 等候选数对照（N 固定，算力随 H 增长）——若存在则叠加
+        fx = RL / "horizon_frontier_fixedN" / "horizon_frontier.json"
+        if fx.exists():
+            fd = json.loads(fx.read_text(encoding="utf-8")).get("horizons", {})
+            fh = sorted(int(k) for k in fd)
+            if fh:
+                ax.plot(fh, [fd[str(h)]["comfort_pct"] for h in fh], "D--",
+                        color="#8e44ad", lw=2, label="等候选数（N=192 固定）")
         ax.set_xlabel("前瞻步数 H")
         ax.set_ylabel("舒适率 %", color="#2c6fbb")
         ax.set_xticks(hs)
