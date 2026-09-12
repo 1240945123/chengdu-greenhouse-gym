@@ -106,6 +106,34 @@ class GlassGreenhouseEnvFlatDiscrete(GlassGreenhouseEnv):
         return self._integrate(self._action_to_u(decode_levels(int(action))))
 
 
+MASKED_DIMS_DEFAULT = (4, 5)  # 补光、CO₂（disable_supplements 下无效）
+
+
+def supplement_action_mask(disabled_dims: tuple[int, ...] = MASKED_DIMS_DEFAULT,
+                           nvec: tuple[int, ...] = _LEVEL_DIMS) -> np.ndarray:
+    """构造静态动作掩码（展平的布尔向量，MaskablePPO 约定）。
+
+    屏蔽 `disabled_dims` 指定通道的除"档位 0"以外的所有档位。
+    提取为模块级函数，便于**评估时直接传给 `model.predict(action_masks=...)`**，
+    无需再包一层 gym Wrapper（Wrapper 不透传自定义属性，取不到 env.x）。
+    """
+    nvec = np.asarray(nvec, dtype=int)
+    offsets = np.concatenate([[0], np.cumsum(nvec)])[:-1]
+    mask = np.ones(int(nvec.sum()), dtype=bool)
+    for dim in disabled_dims:
+        off = int(offsets[dim])
+        mask[off + 1: off + int(nvec[dim])] = False
+    return mask
+
+
+def effective_combinations(disabled_dims: tuple[int, ...] = MASKED_DIMS_DEFAULT,
+                           nvec: tuple[int, ...] = _LEVEL_DIMS) -> int:
+    """掩码后的有效动作组合数（默认 2·2·2·3·1·1·4·2·2 = 384）。"""
+    nvec = np.asarray(nvec, dtype=int)
+    dims = [int(nvec[j]) if j not in disabled_dims else 1 for j in range(len(nvec))]
+    return int(np.prod(dims))
+
+
 class SupplementMaskEnv(gym.ActionWrapper):
     """动作掩码包装：屏蔽无效执行器通道，供 MaskablePPO 使用。
 
@@ -123,16 +151,9 @@ class SupplementMaskEnv(gym.ActionWrapper):
 
     def __init__(self, env: GlassGreenhouseEnv, disabled_dims: tuple[int, ...] = (4, 5)):
         super().__init__(env)
-        nvec = np.asarray(env.action_space.nvec, dtype=int)
-        offsets = np.concatenate([[0], np.cumsum(nvec)])[:-1]
-        mask = np.ones(int(nvec.sum()), dtype=bool)
-        for dim in disabled_dims:
-            off = int(offsets[dim])
-            mask[off + 1: off + int(nvec[dim])] = False
-        self._mask = mask
-        self.nvec = nvec
-        self.n_combinations = int(np.prod(
-            [int(nvec[j]) if j not in disabled_dims else 1 for j in range(len(nvec))]))
+        self._mask = supplement_action_mask(disabled_dims)
+        self.nvec = np.asarray(env.action_space.nvec, dtype=int)
+        self.n_combinations = effective_combinations(disabled_dims, tuple(self.nvec))
 
     def action_masks(self) -> np.ndarray:
         return self._mask

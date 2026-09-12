@@ -34,7 +34,8 @@ OUT = RL / "p0_bundle"
 DAYS = 102
 
 
-def make_env(padded: bool = False):
+def make_env():
+    """评估环境。不包 gym Wrapper —— Wrapper 不透传 env.x 等自定义属性。"""
     from glass_env import GlassGreenhouseEnv
 
     base = GlassGreenhouseEnv(
@@ -43,13 +44,7 @@ def make_env(padded: bool = False):
         cooling_mode="overheat", obs_include_outdoor=True, screen_shade_weight=0.5,
         comfort_weight=0.0, smooth_weight=0.0,
     )
-    if not padded:
-        return base, None
-    from experiments.controllers.glass_rl.env_variants import SupplementMaskEnv
-    from sb3_contrib.common.wrappers import ActionMasker
-
-    masked = ActionMasker(SupplementMaskEnv(base), lambda e: e.action_masks())
-    return masked, masked
+    return base
 
 
 def comfort(t, rh, hour):
@@ -80,8 +75,8 @@ def metrics(temp, rh, hour, day, rew, f0, env, times) -> dict:
     }
 
 
-def rollout(predict, padded: bool = False):
-    env, wrapped = make_env(padded)
+def rollout(predict):
+    env = make_env()
     env.reset(seed=0)
     f0 = float(env.x[25])
     temp, rh, hour, day, rew, times, acts = [], [], [], [], [], [], []
@@ -111,19 +106,16 @@ def pred_ppo(path):
     from stable_baselines3 import PPO
 
     m = PPO.load(str(path))
-    return lambda e: m.predict(e._get_obs(), deterministic=True)[0], False
+    return lambda e: m.predict(e._get_obs(), deterministic=True)[0]
 
 
 def pred_maskable(path):
     from sb3_contrib import MaskablePPO
+    from experiments.controllers.glass_rl.env_variants import supplement_action_mask
 
     m = MaskablePPO.load(str(path))
-
-    def f(e):
-        masks = e.action_masks() if hasattr(e, "action_masks") else None
-        return m.predict(e._get_obs(), deterministic=True, action_masks=masks)[0]
-
-    return f, True
+    mask = supplement_action_mask()  # 静态掩码：直接传给 predict，无需 Wrapper
+    return lambda e: m.predict(e._get_obs(), deterministic=True, action_masks=mask)[0]
 
 
 def pred_cont(cls_name, path):
@@ -134,7 +126,7 @@ def pred_cont(cls_name, path):
     mod = {"SAC": SAC}
     cls = getattr(sb3_contrib, cls_name) if cls_name != "SAC" else mod["SAC"]
     m = cls.load(str(path))
-    return lambda e: continuous_to_levels(m.predict(e._get_obs(), deterministic=True)[0]), False
+    return lambda e: continuous_to_levels(m.predict(e._get_obs(), deterministic=True)[0])
 
 
 def pred_dagger():
@@ -148,7 +140,7 @@ def pred_dagger():
     model = DistillPolicy(n_in=len(mean))
     model.load_state_dict(torch.load(RL / "distill_mpc" / "policy.pt", map_location="cpu"))
     model.eval()
-    return lambda e: model.act(e._get_obs(), mean, std), False
+    return lambda e: model.act(e._get_obs(), mean, std)
 
 
 def load_curve(path: Path) -> dict:
@@ -180,8 +172,8 @@ def main() -> None:
         if not Path(str(path) + ".zip").exists():
             print(f"[skip] {label}: 模型不存在", flush=True)
             continue
-        pred, padded = (pred_maskable(path) if kind == "maskable" else pred_ppo(path))
-        r = rollout(pred, padded=padded)
+        pred = pred_maskable(path) if kind == "maskable" else pred_ppo(path)
+        r = rollout(pred)
         r["group"] = "P0-1 动作掩码"
         bundle["results"][label] = r
         print(f"[P0-1] {label}: 舒适 {r['comfort_pct']:.1f}% 果实 {r['fruit_kg']:.2f} "
@@ -197,8 +189,8 @@ def main() -> None:
         if not Path(str(p) + ".zip").exists():
             print(f"[skip] {label}: 模型不存在", flush=True)
             continue
-        pred, padded = pred_cont(cls_name, p)
-        r = rollout(pred, padded=padded)
+        pred = pred_cont(cls_name, p)
+        r = rollout(pred)
         r["group"] = "P0-2 off-policy"
         bundle["results"][label] = r
         curves[label] = load_curve(RL / sub / "training_curve.csv")
