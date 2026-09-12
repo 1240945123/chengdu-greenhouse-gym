@@ -25,3 +25,6 @@ outputs/
 *.pt
 *.pth
 .worktrees/
+
+# 训练/探针日志（不入库）
+logs/
