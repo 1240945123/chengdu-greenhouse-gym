@@ -7,6 +7,11 @@ from glassgym.models.GreenLight.crop import crop_derivatives
 # 减少 cover 向天空的有效辐射散热。真实铝箔保温幕节能率约 40-70%。
 SCREEN_LONGWAVE_SAVING = 0.6
 
+# 诊断开关：若为数值则覆盖"冠层-空气对流耦合系数"。生产训练/评估保持 None。
+# 设为 300.0 可复现修复前的冠层过热行为，用于论文图 3-1 的"修复前/后"对照
+# （见 docs/notes/04-完整生长季_冠层过热bug修复.md）。
+H_AIR_CANOPY_OVERRIDE: float | None = None
+
 
 def _positive(values, idx, default=1.0):
     if values.shape[0] <= idx:
@@ -103,7 +108,8 @@ def ODE(x: np.ndarray, u: np.ndarray, d: np.ndarray, p: np.ndarray):
     # Raising the coupling keeps the canopy near air temperature; it does NOT
     # change the air temperature (the canopy->air flux h*(tCan-tAir) equals
     # solar_canopy - latent at steady state, independent of h).
-    h_air_canopy = 2.0 * 5.0 * 3.0 * area  # 5760 W/K for the 192 m2 house
+    h_air_canopy = (H_AIR_CANOPY_OVERRIDE if H_AIR_CANOPY_OVERRIDE is not None
+                    else 2.0 * 5.0 * 3.0 * area)  # 5760 W/K for the 192 m2 house
     h_air_floor = 700.0
     h_air_cover = 900.0
     h_cover_out = 1300.0
