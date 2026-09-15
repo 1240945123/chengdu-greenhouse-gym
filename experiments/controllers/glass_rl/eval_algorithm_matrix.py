@@ -73,7 +73,7 @@ def _comfort(t, rh, hour):
     return (lo <= t <= hi) and (60.0 <= rh <= 85.0)
 
 
-def metrics(temp, rh, hour, day, rew, f0, env, times) -> dict:
+def metrics(temp, rh, hour, day, rew, f0, env, times, acts=None) -> dict:
     temp = np.asarray(temp); rh = np.asarray(rh); hour = np.asarray(hour)
     day = np.asarray(day)
     c = np.array([_comfort(t, h, hr) for t, h, hr in zip(temp, rh, hour)])
@@ -81,7 +81,7 @@ def metrics(temp, rh, hour, day, rew, f0, env, times) -> dict:
     daily_mean = np.array([temp[day == d].mean() for d in range(DAYS)])
     per_day = np.array([c[day == d].mean() for d in range(DAYS)])
     month = np.where(day < 30, 4, np.where(day < 61, 5, np.where(day < 91, 6, 7)))
-    return {
+    out = {
         "comfort_pct": round(float(c.mean() * 100), 1),
         "fruit_kg": round(float((float(env.x[25]) - f0) * 1e-6 / 0.081), 3),
         "max_temp": round(float(temp.max()), 2),
@@ -94,6 +94,14 @@ def metrics(temp, rh, hour, day, rew, f0, env, times) -> dict:
         "month_comfort": {int(m): round(float(c[month == m].mean() * 100), 1)
                           for m in (4, 5, 6, 7)},
     }
+    if acts is not None:
+        # 策略退化诊断：102 天里出现过的「不同动作组合」种数。
+        # 1 表示策略退化为恒定动作（如 A2C / SAC / DDPG / TD3），此类行的性能指标
+        # 反映的是"某个固定开度"而非"闭环控制能力"，横向比较时必须标注。
+        A = np.asarray(acts, dtype=int)
+        out["n_unique_actions"] = int(len(np.unique(A, axis=0)))
+        out["degenerate"] = bool(out["n_unique_actions"] <= 2)
+    return out
 
 
 def rollout(predict, n_forecast_hours: int = 0, warmup: int = 3):
@@ -116,7 +124,7 @@ def rollout(predict, n_forecast_hours: int = 0, warmup: int = 3):
         rh.append(float(info["rh"]))
         hour.append(i % 24)
         day.append(i // 24)
-    m = metrics(temp, rh, hour, day, rew, f0, env, times)
+    m = metrics(temp, rh, hour, day, rew, f0, env, times, acts=acts)
     A = np.stack(acts)
     m["action_usage_pct"] = {EXEC[j]: round(float((A[:, j] > 0).mean() * 100), 1)
                              for j in range(A.shape[1])}
