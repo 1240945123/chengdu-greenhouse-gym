@@ -1,9 +1,9 @@
-"""论文第 3 章（玻璃温室物理数字孪生）插图三件套。
+"""论文第 2 章（玻璃温室物理数字孪生）插图三件套。
 
-产出（results/.../rl/figures_chapter3/）：
-  fig3_1_canopy_overheat.png   冠层-空气温差：修复前(h=300) vs 修复后(h=5760)
-  fig3_2_solar_gain_calib.png  逐日最高温：真实 vs 仿真(p209=0.91) vs 仿真(p209=0.42)
-  fig3_3_sim_vs_real_temp.png  逐时室内温度轨迹：真实 vs 仿真(标定后)
+产出（results/.../rl/figures_chapter2/）：
+  fig2_1_canopy_overheat.png   冠层-空气温差：修复前(h=300) vs 修复后(h=5760)
+  fig2_2_solar_gain_calib.png  逐日最高温：真实 vs 仿真(p209=0.91) vs 仿真(p209=0.42)
+  fig2_3_sim_vs_real_temp.png  逐时室内温度轨迹：真实 vs 仿真(标定后)
 
 数据：
   真实：data/processed/chengdu_agri/greenhouse_001/trajectories/hourly_wide_with_controls.csv
@@ -32,7 +32,7 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "experiments/controllers/glass_rl")
 
 RL = Path("results/chengdu_agri_greenhouse_001/real_greenhouse/rl")
-OUT = RL / "figures_chapter3"
+OUT = RL / "figures_chapter2"
 # 真实室内温度：培养窗口（4/1—7/11）数据集（与 docs/notes/07 同源，逐月峰值
 # 4月 37.3 / 5月 42.3 / 6月 38.7 完全一致）
 V5_DIR = Path("data/processed/chengdu_agri/greenhouse_001/trajectories/"
@@ -125,7 +125,7 @@ def run_sim(p209: float = 0.42, canopy_h: float | None = None):
 
 
 # ------------------------------------------------------------------ 三张图
-def fig31(air_fix, can_fix, air_bug, can_bug) -> None:
+def fig21(air_fix, can_fix, air_bug, can_bug) -> None:
     """冠层-空气温差：修复前 vs 修复后（选 6 月一段晴好窗口）。"""
     d0, d1 = 60, 74          # 6 月 1—14 日
     sl = slice(d0 * 24, d1 * 24)
@@ -139,17 +139,17 @@ def fig31(air_fix, can_fix, air_bug, can_bug) -> None:
     ax.axhspan(0, 2, color="#2ca02c", alpha=0.10, label="真实合理区间 0—2°C")
     ax.axhline(0, color="k", lw=0.5)
     ax.set_xlabel("6 月 1 日起小时数"); ax.set_ylabel("冠层 − 空气 温差 °C")
-    ax.set_title("图 3-1 冠层过热诊断：冠层-空气温差（人工操作重放，6/1—6/14）",
+    ax.set_title("图 2-1 冠层过热诊断：冠层-空气温差（人工操作重放，6/1—6/14）",
                  fontweight="bold")
     ax.legend(fontsize=9); ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / "fig3_1_canopy_overheat.png", dpi=150)
+    fig.savefig(OUT / "fig2_1_canopy_overheat.png", dpi=150)
     plt.close(fig)
     print(f"  修复前温差 峰值 {np.nanmax((can_bug - air_bug)[sl]):.1f}°C → "
           f"修复后 {np.nanmax((can_fix - air_fix)[sl]):.1f}°C")
 
 
-def fig32(real: pd.DataFrame, air_091, air_042) -> None:
+def fig22(real: pd.DataFrame, air_091, air_042) -> None:
     """逐日最高温：真实 vs 仿真(0.91) vs 仿真(0.42)，标注 7/11 清棚。"""
     real_dmax = real.groupby("day")["temp"].max()
     days = np.arange(DAYS)
@@ -175,11 +175,11 @@ def fig32(real: pd.DataFrame, air_091, air_042) -> None:
     ax.axvspan(0, 101, color="#2ca02c", alpha=0.06)
     ax.text(8, ymax * 0.90, "标定区间：生长季 4/1—7/10", fontsize=9, color="#2ca02c")
     ax.set_xlabel("定植后天数（0 = 2026-04-01）"); ax.set_ylabel("逐日最高温 °C")
-    ax.set_title("图 3-2 辐射增益误标定诊断：逐日室内最高温 真实 vs 仿真",
+    ax.set_title("图 2-2 辐射增益误标定诊断：逐日室内最高温 真实 vs 仿真",
                  fontweight="bold")
     ax.legend(fontsize=8.5, loc="lower right"); ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / "fig3_2_solar_gain_calib.png", dpi=150)
+    fig.savefig(OUT / "fig2_2_solar_gain_calib.png", dpi=150)
     plt.close(fig)
 
     for name, m in (("4月", (0, 30)), ("5月", (30, 61)), ("6月", (61, 91))):
@@ -188,7 +188,7 @@ def fig32(real: pd.DataFrame, air_091, air_042) -> None:
               f" | 0.42 {simmax_042[m[0]:m[1]].max():.1f}")
 
 
-def fig33(real: pd.DataFrame, air_042) -> None:
+def fig23(real: pd.DataFrame, air_042) -> None:
     """逐时室内温度轨迹：真实 vs 仿真(标定后)，选 5 月中一周。"""
     d0, d1 = 36, 43
     seg = real[(real["day"] >= d0) & (real["day"] < d1)].sort_values("timestamp")
@@ -200,11 +200,11 @@ def fig33(real: pd.DataFrame, air_042) -> None:
     ax.plot(x[: len(real_h)], real_h, color="#111111", lw=1.5, label="真实（传感器）")
     ax.plot(x, sim_h, color="#1f77b4", lw=1.5, label="仿真（标定后 p209=0.42）")
     ax.set_xlabel("5 月 6 日起天数"); ax.set_ylabel("室内空气温度 °C")
-    ax.set_title("图 3-3 仿真 vs 真实 逐时室内温度轨迹（示例周：5/6—5/12）",
+    ax.set_title("图 2-3 仿真 vs 真实 逐时室内温度轨迹（示例周：5/6—5/12）",
                  fontweight="bold")
     ax.legend(fontsize=9); ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / "fig3_3_sim_vs_real_temp.png", dpi=150)
+    fig.savefig(OUT / "fig2_3_sim_vs_real_temp.png", dpi=150)
     plt.close(fig)
     n = min(len(real_h), len(sim_h))
     print(f"  示例周 MAE = {np.abs(real_h[:n] - sim_h[:n]).mean():.2f}°C")
@@ -223,16 +223,16 @@ def main() -> None:
     print("运行仿真：冠层 h=300（修复前）…")
     air_bug, can_bug = run_sim(0.42, 300.0)
 
-    print("绘图 3-1…"); fig31(air_042, can_042, air_bug, can_bug)
-    print("绘图 3-2…"); fig32(real, air_091, air_042)
-    print("绘图 3-3…"); fig33(real, air_042)
+    print("绘图 2-1…"); fig21(air_042, can_042, air_bug, can_bug)
+    print("绘图 2-2…"); fig22(real, air_091, air_042)
+    print("绘图 2-3…"); fig23(real, air_042)
 
     meta = {"real_rows": int(len(real)),
             "real_span": [str(real['timestamp'].min()), str(real['timestamp'].max())],
             "days": DAYS,
             "peak_air_canopy_diff_fixed": float(np.nanmax(can_042 - air_042)),
             "peak_air_canopy_diff_bug": float(np.nanmax(can_bug - air_bug))}
-    (OUT / "chapter3_figs_meta.json").write_text(
+    (OUT / "chapter2_figs_meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n已写入 {OUT}")
 
