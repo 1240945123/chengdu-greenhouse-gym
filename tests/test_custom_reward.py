@@ -57,10 +57,11 @@ class TestCustomRewards(unittest.TestCase):
         )
         self.env_kwargs, _ = build_env_kwargs(self.env_kwargs)
 
-    def _make_env(self, reward_spec, reward_kwargs):
+    def _make_env(self, reward_spec, reward_kwargs, **extra):
         env_kwargs = self.env_kwargs.copy()
         env_kwargs["reward_fn"] = reward_spec
         env_kwargs["reward_kwargs"] = reward_kwargs
+        env_kwargs.update(extra)
         return GreenLightEnv(
             **env_kwargs,
         )
@@ -165,6 +166,11 @@ class TestCustomRewards(unittest.TestCase):
                 "state_indices": [0, 1, 2],
                 "scale": 0.5,
             },
+            # 本 fork 为 RL 稳定性新增了奖励安全界（GreenLightEnv 默认 (-100, 100)）。
+            # 该示例奖励直接对状态量求和的量级远大于 100（实测 ~850），会触发安全界——
+            # 这是**有意为之的设计取舍，不是缺陷**，故本用例显式放宽边界，
+            # 以便继续验证「自定义奖励类可依赖环境状态」这一行为本身。
+            valid_reward_bounds=(-1.0e4, 1.0e4),
         )
 
         env.reset(seed=0)
