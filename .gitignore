@@ -28,3 +28,13 @@ outputs/
 
 # 训练/探针日志（不入库）
 logs/
+
+# ---- 密钥与凭据防护（2026-09-19 补：防止将来接入 LLM API 时误提交）----
+.env
+.env.*
+*.key
+*.pem
+*_secret*
+secrets/
+credentials*
+*.token
