@@ -145,9 +145,10 @@ def main() -> int:
 
     # ⑤ 可选：文献 PDF
     if a.with_pdf:
-        pdf_zip = BACKUP / f"文献库_173篇_{STAMP}.zip"
         lib = PAPER / "文献库"
         pdfs = sorted(p for p in lib.glob("*.pdf"))
+        # ⚠️ 篇数动态计算，不硬编码——曾写死"173篇"，文献增至 175 篇后即失效
+        pdf_zip = BACKUP / f"文献库_{len(pdfs)}篇_{STAMP}.zip"
         print(f"\n=== ④ 打包文献库（{len(pdfs)} 篇）→ {pdf_zip.name} ===")
         with zipfile.ZipFile(pdf_zip, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as z:
             for i, p in enumerate(pdfs, 1):
