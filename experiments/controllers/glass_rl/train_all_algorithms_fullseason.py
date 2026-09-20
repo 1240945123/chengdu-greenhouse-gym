@@ -80,9 +80,13 @@ def build_env(env_kind: str):
     raise ValueError(env_kind)
 
 
-def train_one(algorithm: str, timesteps: int) -> None:
+def train_one(algorithm: str, timesteps: int, seed: int = 0) -> None:
     env_kind, sb3_name, hyper = ALG_SPECS[algorithm]
+    # seed 0 沿用原路径（保持既有冻结模型可寻）；seed>0 落到 algorithm/seed_S/
+    # 这样多随机种子实验（补充实验 A6）不会覆盖第 4 章矩阵所用的 seed 0 产物。
     out_dir = OUT_ROOT / algorithm
+    if seed != 0:
+        out_dir = out_dir / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     import importlib
@@ -94,7 +98,7 @@ def train_one(algorithm: str, timesteps: int) -> None:
     env = build_env(env_kind)
     policy = "MlpLstmPolicy" if sb3_name == "RecurrentPPO" else "MlpPolicy"
     kwargs = dict(hyper)
-    kwargs.update(dict(verbose=1, seed=0, tensorboard_log=str(out_dir / "tb_log")))
+    kwargs.update(dict(verbose=1, seed=seed, tensorboard_log=str(out_dir / "tb_log")))
     model = ModelCls(policy, env, **kwargs)
 
     # 训练曲线记录 callback：每 1000 步记录 reward/loss 到 CSV（可画收敛曲线）
@@ -147,7 +151,7 @@ def train_one(algorithm: str, timesteps: int) -> None:
     elapsed = time.time() - t0
     meta = {
         "algorithm": algorithm, "sb3_class": sb3_name, "env_kind": env_kind,
-        "timesteps": timesteps, "seed": 0, "elapsed_seconds": round(elapsed, 1),
+        "timesteps": timesteps, "seed": seed, "elapsed_seconds": round(elapsed, 1),
         "train_days": TRAIN_DAYS, "episode_days": EPISODE_DAYS,
         "cooling_weight": 0.5, "crop_start": "seedling",
         "hyperparameters": {k: v for k, v in hyper.items()},
@@ -162,17 +166,25 @@ def main() -> None:
     parser.add_argument("--algorithms", nargs="+", default=list(ALG_SPECS.keys()),
                         help="要训练的算法（默认全部）")
     parser.add_argument("--timesteps", type=int, default=TOTAL_STEPS)
+    parser.add_argument("--seed", type=int, default=0,
+                        help="随机种子。0 写 algorithm/（第 4 章矩阵口径）；>0 写 algorithm/seed_S/"
+                             "（补充实验 A6 多种子，不覆盖冻结产物）")
+    parser.add_argument("--seeds", nargs="+", type=int, default=None,
+                        help="一次跑多个种子，如 --seeds 1 2 3 4")
     args = parser.parse_args()
 
+    seeds = args.seeds if args.seeds else [args.seed]
     for alg in args.algorithms:
         if alg not in ALG_SPECS:
             print(f"未知算法 {alg}，可选: {list(ALG_SPECS)}")
             continue
-        try:
-            train_one(alg, args.timesteps)
-        except Exception as e:
-            print(f"\n[{alg}] 训练失败: {type(e).__name__}: {str(e)[:200]}", flush=True)
-            continue
+        for sd in seeds:
+            try:
+                train_one(alg, args.timesteps, seed=sd)
+            except Exception as e:
+                print(f"\n[{alg} seed={sd}] 训练失败: {type(e).__name__}: {str(e)[:200]}",
+                      flush=True)
+                continue
 
 
 if __name__ == "__main__":

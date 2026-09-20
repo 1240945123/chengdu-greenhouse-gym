@@ -97,8 +97,11 @@ def main() -> None:
     ap.add_argument("--timesteps", type=int, default=600_000)
     ap.add_argument("--out", type=str, default=str(OUT_ROOT))
     ap.add_argument("--no-mask", action="store_true", help="对照组：不施加掩码（应等价于 PPO v6）")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="随机种子。0 写 --out 目录；>0 写 <out>/seed_S/（补充实验 A6 多种子）")
     args = ap.parse_args()
-    out_root = Path(args.out)
+    # seed 0 沿用原路径（保持冻结产物可寻）；seed>0 落到 seed_S/ 子目录避免覆盖
+    out_root = Path(args.out) if args.seed == 0 else Path(args.out) / f"seed_{args.seed}"
     masked = not args.no_mask
 
     from sb3_contrib import MaskablePPO
@@ -112,7 +115,7 @@ def main() -> None:
     ModelCls = MaskablePPO if masked else PPO
     model = ModelCls(
         "MlpPolicy", env,
-        seed=0, verbose=1,
+        seed=args.seed, verbose=1,
         tensorboard_log=str(out_root / "tb_log"),
         **PPO_CONFIG,
     )
@@ -144,7 +147,7 @@ def main() -> None:
         "action_masking": bool(masked),
         "n_combinations": n_comb,
         "masked_dims": list(MASKED_DIMS) if masked else [],
-        "timesteps": args.timesteps, "seed": 0,
+        "timesteps": args.timesteps, "seed": args.seed,
         "elapsed_seconds": round(elapsed, 1),
         "train_days": TRAIN_DAYS, "episode_days": EPISODE_DAYS,
         "crop_start": "seedling", "disable_supplements": True,
